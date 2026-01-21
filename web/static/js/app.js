@@ -3,7 +3,12 @@
 class GPUMemCalculator {
     constructor() {
         this.apiBase = '/api';
+        this.autoCalculateEnabled = true;
+        this.debounceTimer = null;
+        this.debounceDelay = 500; // ms
+        this.isApplyingConfig = false; // Flag to prevent auto-calc during preset loads
         this.initEventListeners();
+        this.initAutoCalculate();
     }
 
     initEventListeners() {
@@ -75,6 +80,65 @@ class GPUMemCalculator {
         this.updateEffectiveGPUs();
     }
 
+    initAutoCalculate() {
+        // List of all input IDs that should trigger auto-calculation
+        const autoCalcInputs = [
+            // Model settings
+            'model-name', 'num-params', 'num-layers', 'hidden-size', 'num-heads',
+            'vocab-size', 'seq-len',
+            // Training settings
+            'batch-size', 'batch-size-slider', 'grad-accum', 'optimizer', 'dtype',
+            'activation-checkpointing',
+            // Parallelism
+            'tensor-pp', 'pipeline-pp', 'data-pp', 'seq-parallel',
+            // Engine settings
+            'engine-type', 'zero-stage', 'offload-optimizer', 'offload-param',
+            'zero-init', 'sharding-strategy', 'use-distributed-optimizer',
+            'num-micro-batches', 'gradient-clipping', 'weight-decay', 'lr', 'warmup-steps',
+            // Hardware
+            'num-gpus', 'gpu-model', 'gpu-mem-custom',
+        ];
+
+        // Add event listeners to all inputs
+        autoCalcInputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (!element) return;
+
+            // Use 'change' event for selects and checkboxes
+            // Use 'input' event for text/number inputs
+            const eventType = (element.tagName === 'SELECT' ||
+                              element.tagName === 'INPUT' &&
+                              (element.type === 'checkbox' || element.type === 'range'))
+                              ? 'input' : 'input';
+
+            element.addEventListener(eventType, () => {
+                this.scheduleAutoCalculate();
+            });
+        });
+    }
+
+    scheduleAutoCalculate() {
+        // Don't auto-calculate if currently applying a config (preset load)
+        if (this.isApplyingConfig) return;
+
+        // Don't auto-calculate if disabled
+        if (!this.autoCalculateEnabled) return;
+
+        // Clear existing timer
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+        }
+
+        // Schedule new calculation
+        this.debounceTimer = setTimeout(() => {
+            this.calculateMemory();
+        }, this.debounceDelay);
+    }
+
+    setAutoCalculate(enabled) {
+        this.autoCalculateEnabled = enabled;
+    }
+
     async loadPreset(presetName) {
         try {
             const response = await fetch(`${this.apiBase}/preset/${presetName}`);
@@ -90,6 +154,9 @@ class GPUMemCalculator {
     }
 
     applyConfig(config) {
+        // Set flag to prevent auto-calculation during config load
+        this.isApplyingConfig = true;
+
         // Apply model configuration
         if (config.model) {
             if (config.model.name) document.getElementById('model-name').value = config.model.name;
@@ -160,6 +227,12 @@ class GPUMemCalculator {
         }
 
         this.updateEffectiveGPUs();
+
+        // Re-enable auto-calculation and trigger calculation
+        setTimeout(() => {
+            this.isApplyingConfig = false;
+            this.calculateMemory();
+        }, 100);
     }
 
     updateEngineFields(engineType) {
