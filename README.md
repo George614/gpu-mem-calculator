@@ -225,18 +225,38 @@ Fully Sharded Data Parallel with multiple sharding strategies.
 The calculator uses the following formulas based on training engine:
 
 **Base Components:**
-- Model Parameters: `num_params × bytes_per_param`
-- Gradients: `num_params × bytes_per_param`
-- Optimizer States: `num_params × 8` (for Adam/AdamW)
-- Activations: Depends on batch size, sequence length, and model architecture
+- Model Parameters: `num_params × bytes_per_param` (FP16/BF16 = 2 bytes, FP32 = 4 bytes)
+- Gradients: `num_params × bytes_per_param` (same precision as parameters during training)
+- Optimizer States: `num_params × 12` for Adam/AdamW (FP32 param copy + momentum + variance)
+- Activations: `batch_size × seq_len × hidden_size × num_layers × 16` (heuristic approximation)
 
-**Example - DeepSpeed ZeRO-3:**
+**DeepSpeed ZeRO Stages:**
+
+*ZeRO-1* (shard optimizer states):
 ```
-largest_layer_memory = 4 × largest_layer_params
-total_per_gpu = largest_layer_memory + (18 × params) / num_gpus
+total_per_gpu = 4 × params + (12 × params) / num_gpus
 ```
 
-See [DeepSpeed Memory Documentation](https://deepspeed.readthedocs.io/en/latest/memory.html) for details.
+*ZeRO-2* (shard optimizer + gradients):
+```
+total_per_gpu = 2 × params + (2 × params) / num_gpus + (12 × params) / num_gpus
+```
+
+*ZeRO-3* (shard everything):
+```
+total_per_gpu = largest_layer_memory + (16 × params) / num_gpus
+where largest_layer_memory = 4 × largest_layer_params
+```
+
+Note: ZeRO-3 uses 16 bytes (not 18) when offloading is disabled, representing:
+- 12 bytes: Optimizer states (FP32)
+- 2 bytes: Sharded FP16 parameters
+- 2 bytes: Sharded FP16 gradients
+
+**References:**
+- [DeepSpeed Memory Documentation](https://deepspeed.readthedocs.io/en/latest/memory.html)
+- [Microsoft Research ZeRO Blog](https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/)
+- [EleutherAI Transformer Math 101](https://blog.eleuther.ai/transformer-math/)
 
 ## Example Configurations
 
@@ -291,10 +311,22 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## References
 
-- [DeepSpeed Memory Documentation](https://deepspeed.readthedocs.io/en/latest/memory.html)
-- [NVIDIA Megatron-LM](https://github.com/NVIDIA/Megatron-LM)
-- [PyTorch FSDP](https://pytorch.org/docs/stable/fsdp.html)
-- [llm-analysis](https://github.com/cli99/llm-analysis)
+The memory calculations in this tool are based on authoritative sources:
+
+**Core Memory Formulas:**
+- [EleutherAI Transformer Math 101](https://blog.eleuther.ai/transformer-math/) - Comprehensive breakdown of transformer memory requirements
+- [Microsoft Research ZeRO Blog](https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/) - ZeRO optimization techniques
+- [Reducing Activation Recomputation in Large Transformer Models](https://arxiv.org/abs/2204.13323) - Activation checkpointing strategies
+
+**Engine Documentation:**
+- [DeepSpeed Memory Documentation](https://deepspeed.readthedocs.io/en/latest/memory.html) - Official DeepSpeed memory formulas
+- [NVIDIA Megatron-LM](https://github.com/NVIDIA/Megatron-LM) - Tensor and pipeline parallelism
+- [PyTorch FSDP Documentation](https://pytorch.org/docs/stable/fsdp.html) - Fully sharded data parallel
+- [PyTorch DDP Tutorial](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) - Distributed data parallel
+
+**Related Tools:**
+- [llm-analysis](https://github.com/cli99/llm-analysis) - LLM memory analysis
+- [vram-calculator](https://github.com/furiousteabag/vram-calculator) - VRAM calculation utilities
 
 ## License
 
@@ -302,7 +334,9 @@ MIT License
 
 ## Acknowledgments
 
-This tool was inspired by:
-- [DeepSpeed Memory Estimator](https://deepspeed.readthedocs.io/en/latest/memory.html)
-- [llm-analysis](https://github.com/cli99/llm-analysis)
-- [vram-calculator](https://github.com/furiousteabag/vram-calculator)
+This tool was inspired by and builds upon the excellent work of:
+- [DeepSpeed Memory Estimator](https://deepspeed.readthedocs.io/en/latest/memory.html) - ZeRO memory optimization formulas
+- [llm-analysis](https://github.com/cli99/llm-analysis) - LLM memory analysis methodology
+- [vram-calculator](https://github.com/furiousteabag/vram-calculator) - VRAM calculation approach
+
+Special thanks to the EleutherAI community for their comprehensive [Transformer Math 101](https://blog.eleuther.ai/transformer-math/) guide, which provides detailed formulas for transformer memory calculations.
