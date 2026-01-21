@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Memory Calculator for LLM Training</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 GPU Memory Calculator</h1>
+            <p class="subtitle">For Large Language Model Training</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Configuration Panel -->
+            <div class="config-panel">
+                <h2>Configuration</h2>
+
+                <!-- Model Settings -->
+                <section class="config-section">
+                    <h3>Model Settings</h3>
+                    <div class="form-group">
+                        <label for="preset-select">Preset Model:</label>
+                        <select id="preset-select">
+                            <option value="custom">Custom</option>
+                            <option value="llama2-7b">LLaMA 2 7B</option>
+                            <option value="llama2-13b">LLaMA 2 13B</option>
+                            <option value="llama2-70b">LLaMA 2 70B</option>
+                            <option value="gpt3-175b">GPT-3 175B</option>
+                        </select>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group" data-tooltip="Name of your model">
+                            <label for="model-name">Model Name:</label>
+                            <input type="text" id="model-name" value="custom-model">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Total number of parameters (e.g., 7B, 7000M, 7000000000)">
+                            <label for="num-params">Parameters:</label>
+                            <input type="text" id="num-params" value="7B" placeholder="e.g., 7B">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Number of transformer layers">
+                            <label for="num-layers">Layers:</label>
+                            <input type="number" id="num-layers" value="32" min="1">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Hidden dimension size">
+                            <label for="hidden-size">Hidden Size:</label>
+                            <input type="number" id="hidden-size" value="4096" min="1">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Number of attention heads">
+                            <label for="num-heads">Attention Heads:</label>
+                            <input type="number" id="num-heads" value="32" min="1">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Vocabulary size">
+                            <label for="vocab-size">Vocab Size:</label>
+                            <input type="number" id="vocab-size" value="32000" min="1">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Maximum sequence length">
+                            <label for="seq-len">Max Seq Length:</label>
+                            <input type="number" id="seq-len" value="4096" min="1">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Training Settings -->
+                <section class="config-section">
+                    <h3>Training Settings</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="batch-size" data-tooltip="Batch size per GPU">Batch Size:</label>
+                            <input type="number" id="batch-size" value="4" min="1">
+                            <input type="range" id="batch-size-slider" min="1" max="128" value="4">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Gradient accumulation steps">
+                            <label for="grad-accum">Gradient Accumulation:</label>
+                            <input type="number" id="grad-accum" value="4" min="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="optimizer" data-tooltip="Optimizer type">Optimizer:</label>
+                            <select id="optimizer">
+                                <option value="adamw">AdamW</option>
+                                <option value="adam">Adam</option>
+                                <option value="sgd">SGD</option>
+                                <option value="adamw_8bit">AdamW 8-bit</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dtype" data-tooltip="Data type for training">Precision:</label>
+                            <select id="dtype">
+                                <option value="bf16" selected>BF16</option>
+                                <option value="fp16">FP16</option>
+                                <option value="fp32">FP32</option>
+                                <option value="int8">INT8</option>
+                                <option value="int4">INT4</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="activation-checkpointing" data-tooltip="Activation checkpointing level (0=none, 4=full)">
+                                Activation Checkpointing:
+                            </label>
+                            <select id="activation-checkpointing">
+                                <option value="0">0: None (most memory)</option>
+                                <option value="1">1: Checkpoint attention output</option>
+                                <option value="2" selected>2: Checkpoint attention input</option>
+                                <option value="3">3: Checkpoint layer + attention</option>
+                                <option value="4">4: Full checkpointing (least memory)</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Parallelism Settings -->
+                <section class="config-section">
+                    <h3>Parallelism</h3>
+                    <div class="form-grid">
+                        <div class="form-group" data-tooltip="Tensor parallelism degree">
+                            <label for="tensor-pp">Tensor PP:</label>
+                            <input type="number" id="tensor-pp" value="1" min="1" max="8">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Pipeline parallelism degree">
+                            <label for="pipeline-pp">Pipeline PP:</label>
+                            <input type="number" id="pipeline-pp" value="1" min="1" max="16">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Data parallelism degree">
+                            <label for="data-pp">Data PP:</label>
+                            <input type="number" id="data-pp" value="8" min="1">
+                        </div>
+
+                        <div class="form-group" data-tooltip="Enable sequence parallelism">
+                            <label for="seq-parallel">
+                                <input type="checkbox" id="seq-parallel">
+                                Sequence Parallel
+                            </label>
+                        </div>
+                    </div>
+                    <p class="info-text">Effective GPUs: <span id="effective-gpus">8</span></p>
+                </section>
+
+                <!-- Engine Settings -->
+                <section class="config-section">
+                    <h3>Training Engine</h3>
+                    <div class="form-group">
+                        <label for="engine-type" data-tooltip="Training framework/engine">Engine Type:</label>
+                        <select id="engine-type">
+                            <option value="pytorch_ddp">PyTorch DDP</option>
+                            <option value="deepspeed" selected>DeepSpeed ZeRO</option>
+                            <option value="megatron_lm">Megatron-LM</option>
+                            <option value="fsdp">PyTorch FSDP</option>
+                            <option value="megatron_deepspeed">Megatron + DeepSpeed</option>
+                        </select>
+                    </div>
+
+                    <div id="engine-options">
+                        <!-- Dynamic fields based on engine type -->
+                        <!-- DeepSpeed ZeRO options -->
+                        <div class="form-group" id="zero-stage-group">
+                            <label for="zero-stage" data-tooltip="DeepSpeed ZeRO stage (0-3)">ZeRO Stage:</label>
+                            <select id="zero-stage">
+                                <option value="0">0: Disabled</option>
+                                <option value="1">1: Shard optimizer states</option>
+                                <option value="2">2: Shard optimizer + gradients</option>
+                                <option value="3" selected>3: Shard everything</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="offload-opt-group">
+                            <label for="offload-optimizer" data-tooltip="CPU offload for optimizer states">Offload Optimizer:</label>
+                            <select id="offload-optimizer">
+                                <option value="none">None</option>
+                                <option value="cpu" selected>CPU</option>
+                                <option value="nvme">NVMe</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="offload-param-group">
+                            <label for="offload-param" data-tooltip="CPU offload for parameters">Offload Parameters:</label>
+                            <select id="offload-param">
+                                <option value="none" selected>None</option>
+                                <option value="cpu">CPU</option>
+                                <option value="nvme">NVMe</option>
+                            </select>
+                        </div>
+
+                        <!-- ZeRO-Init option -->
+                        <div class="form-group" id="zero-init-group">
+                            <label for="zero-init" data-tooltip="Use ZeRO initialization (reduces memory during init)">
+                                <input type="checkbox" id="zero-init" checked>
+                                ZeRO Init (ZeRO-3)
+                            </label>
+                        </div>
+
+                        <!-- FSDP Sharding Strategy -->
+                        <div class="form-group" id="sharding-strategy-group" style="display:none;">
+                            <label for="sharding-strategy" data-tooltip="FSDP sharding strategy">Sharding Strategy:</label>
+                            <select id="sharding-strategy">
+                                <option value="no_shard">No Sharding (like DDP)</option>
+                                <option value="shard_grad_op">Shard Gradients + Optimizer (ZeRO-2)</option>
+                                <option value="full_shard" selected>Full Shard (ZeRO-3)</option>
+                            </select>
+                        </div>
+
+                        <!-- Megatron-specific options -->
+                        <div class="form-group" id="megatron-options" style="display:none;">
+                            <label class="group-label">Megatron-LM Options:</label>
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label for="model-parallelism" data-tooltip="Model parallelism strategy">
+                                    <input type="checkbox" id="use-distributed-optimizer">
+                                    Use Distributed Optimizer
+                                </label>
+                            </div>
+                            <div class="form-group" style="margin-top: 5px;">
+                                <label for="num-micro-batches" data-tooltip="Number of micro-batches for pipeline parallelism">
+                                    Num Micro-Batches (PP):
+                                    <input type="number" id="num-micro-batches" value="1" min="1" max="128">
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Training Options -->
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label class="group-label">Advanced Training Options:</label>
+
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label for="gradient-clipping" data-tooltip="Gradient clipping threshold (0 = disabled)">
+                                    Gradient Clipping:
+                                    <input type="number" id="gradient-clipping" value="1.0" min="0" step="0.1">
+                                </label>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 5px;">
+                                <label for="weight-decay" data-tooltip="Weight decay for regularization">Weight Decay:</label>
+                                <input type="number" id="weight-decay" value="0.01" min="0" step="0.001">
+                            </div>
+
+                            <div class="form-group" style="margin-top: 5px;">
+                                <label for="lr" data-tooltip="Learning rate (for reference)">Learning Rate:</label>
+                                <input type="number" id="lr" value="0.0001" min="0" step="0.00001">
+                            </div>
+
+                            <div class="form-group" style="margin-top: 5px;">
+                                <label for="warmup-steps" data-tooltip="Learning rate warmup steps">Warmup Steps:</label>
+                                <input type="number" id="warmup-steps" value="2000" min="0">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Hardware Settings -->
+                <section class="config-section">
+                    <h3>Hardware</h3>
+                    <div class="form-grid">
+                        <div class="form-group" data-tooltip="Number of GPUs">
+                            <label for="num-gpus">Number of GPUs:</label>
+                            <input type="number" id="num-gpus" value="8" min="1" max="1024">
+                        </div>
+
+                        <div class="form-group" data-tooltip="GPU model and memory per GPU">
+                            <label for="gpu-model">GPU Model:</label>
+                            <select id="gpu-model">
+                                <option value="16">RTX 4090 - 24GB</option>
+                                <option value="32">V100 - 32GB</option>
+                                <option value="40">A100 - 40GB</option>
+                                <option value="80" selected>A100 - 80GB / H100 - 80GB</option>
+                                <option value="141">H200 - 141GB</option>
+                                <option value="192">B200 - 192GB</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input type="number" id="gpu-mem-custom" value="80" min="1" style="display:none">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Calculate Buttons -->
+                <div class="button-group">
+                    <button id="calculate-btn" class="btn-primary">Calculate</button>
+                    <button id="reset-btn" class="btn-secondary">Reset</button>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="results-panel">
+                <h2>Results</h2>
+
+                <div class="result-card">
+                    <h3>Memory Breakdown</h3>
+                    <div class="metric">
+                        <span class="metric-label">Per GPU:</span>
+                        <span class="metric-value" id="result-per-gpu">-- GB</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Total All GPUs:</span>
+                        <span class="metric-value" id="result-total">-- GB</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">CPU Memory:</span>
+                        <span class="metric-value" id="result-cpu">-- GB</span>
+                    </div>
+                </div>
+
+                <div class="result-card">
+                    <h3>Component Breakdown</h3>
+                    <div class="breakdown-item">
+                        <span class="breakdown-label">Model Parameters:</span>
+                        <span class="breakdown-value" id="breakdown-params">-- GB</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span class="breakdown-label">Gradients:</span>
+                        <span class="breakdown-value" id="breakdown-grads">-- GB</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span class="breakdown-label">Optimizer States:</span>
+                        <span class="breakdown-value" id="breakdown-optimizer">-- GB</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span class="breakdown-label">Activations:</span>
+                        <span class="breakdown-value" id="breakdown-activations">-- GB</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span class="breakdown-label">Overhead:</span>
+                        <span class="breakdown-value" id="breakdown-overhead">-- GB</span>
+                    </div>
+
+                    <!-- Simple bar chart -->
+                    <div class="bar-chart" id="breakdown-chart">
+                        <div class="bar" id="bar-params" style="width: 0%" title="Model Parameters"></div>
+                        <div class="bar" id="bar-grads" style="width: 0%" title="Gradients"></div>
+                        <div class="bar" id="bar-optimizer" style="width: 0%" title="Optimizer States"></div>
+                        <div class="bar" id="bar-activations" style="width: 0%" title="Activations"></div>
+                    </div>
+                    <div class="chart-legend">
+                        <span class="legend-item"><span class="legend-color params"></span>Params</span>
+                        <span class="legend-item"><span class="legend-color grads"></span>Grads</span>
+                        <span class="legend-item"><span class="legend-color optimizer"></span>Opt</span>
+                        <span class="legend-item"><span class="legend-color activations"></span>Act</span>
+                    </div>
+                </div>
+
+                <div class="result-card">
+                    <h3>Feasibility</h3>
+                    <div class="metric">
+                        <span class="metric-label">Status:</span>
+                        <span class="metric-value" id="feasibility-status">--</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Utilization:</span>
+                        <span class="metric-value" id="feasibility-util">--%</span>
+                    </div>
+                    <div class="metric" id="recommended-batch-container" style="display:none">
+                        <span class="metric-label">Recommended Batch:</span>
+                        <span class="metric-value" id="recommended-batch">--</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button id="save-config-btn" class="btn-secondary">Save Config</button>
+                    <button id="copy-json-btn" class="btn-secondary">Copy JSON</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-message" class="error-message" style="display:none"></div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

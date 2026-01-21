@@ -1,0 +1,31 @@
+{
+  "model": {
+    "name": "custom-1b",
+    "num_parameters": "1B",
+    "num_layers": 24,
+    "hidden_size": 2048,
+    "num_attention_heads": 16,
+    "vocab_size": 32000,
+    "max_seq_len": 2048
+  },
+  "training": {
+    "batch_size": 8,
+    "gradient_accumulation_steps": 2,
+    "optimizer": "adamw",
+    "dtype": "bf16",
+    "activation_checkpointing": 0
+  },
+  "parallelism": {
+    "tensor_parallel_size": 1,
+    "pipeline_parallel_size": 1,
+    "data_parallel_size": 4,
+    "sequence_parallel": false
+  },
+  "engine": {
+    "type": "pytorch_ddp"
+  },
+  "hardware": {
+    "num_gpus": 4,
+    "gpu_memory_gb": 40
+  }
+}

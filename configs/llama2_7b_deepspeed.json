@@ -1,0 +1,36 @@
+{
+  "model": {
+    "name": "llama2-7b",
+    "num_parameters": "7B",
+    "num_layers": 32,
+    "hidden_size": 4096,
+    "num_attention_heads": 32,
+    "vocab_size": 32000,
+    "max_seq_len": 4096,
+    "largest_layer_params": 125829120
+  },
+  "training": {
+    "batch_size": 4,
+    "gradient_accumulation_steps": 4,
+    "optimizer": "adamw",
+    "dtype": "bf16",
+    "activation_checkpointing": 1
+  },
+  "parallelism": {
+    "tensor_parallel_size": 1,
+    "pipeline_parallel_size": 1,
+    "data_parallel_size": 8,
+    "sequence_parallel": false
+  },
+  "engine": {
+    "type": "deepspeed",
+    "zero_stage": 3,
+    "offload_optimizer": "cpu",
+    "offload_param": "none",
+    "zero_init": true
+  },
+  "hardware": {
+    "num_gpus": 8,
+    "gpu_memory_gb": 80
+  }
+}

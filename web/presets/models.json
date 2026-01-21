@@ -1,0 +1,37 @@
+{
+  "gpt3-175b": {
+    "display_name": "GPT-3 175B",
+    "description": "OpenAI GPT-3 175B model",
+    "config": {
+      "model": {
+        "name": "gpt3-175b",
+        "num_parameters": "175B",
+        "num_layers": 96,
+        "hidden_size": 12288,
+        "num_attention_heads": 96,
+        "vocab_size": 50257,
+        "max_seq_len": 2048
+      },
+      "training": {
+        "batch_size": 1,
+        "gradient_accumulation_steps": 1,
+        "optimizer": "adamw",
+        "dtype": "bf16",
+        "activation_checkpointing": 2
+      },
+      "parallelism": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 16,
+        "data_parallel_size": 1,
+        "sequence_parallel": true
+      },
+      "engine": {
+        "type": "megatron_lm"
+      },
+      "hardware": {
+        "num_gpus": 1024,
+        "gpu_memory_gb": 80
+      }
+    }
+  }
+}
