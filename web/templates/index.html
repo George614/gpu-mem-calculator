@@ -25,10 +25,18 @@
                         <label for="preset-select">Preset Model:</label>
                         <select id="preset-select">
                             <option value="custom">Custom</option>
-                            <option value="llama2-7b">LLaMA 2 7B</option>
-                            <option value="llama2-13b">LLaMA 2 13B</option>
-                            <option value="llama2-70b">LLaMA 2 70B</option>
-                            <option value="gpt3-175b">GPT-3 175B</option>
+                            <optgroup label="Dense Models">
+                                <option value="llama2-7b">LLaMA 2 7B</option>
+                                <option value="llama2-13b">LLaMA 2 13B</option>
+                                <option value="llama2-70b">LLaMA 2 70B</option>
+                                <option value="gpt3-175b">GPT-3 175B</option>
+                            </optgroup>
+                            <optgroup label="MoE (Mixture of Experts) Models">
+                                <option value="mixtral-8x7b">Mixtral 8x7B (MoE)</option>
+                                <option value="glm-4-9b">GLM-4 9B (MoE)</option>
+                                <option value="qwen1.5-moe-a14b">Qwen1.5-MoE-A14B</option>
+                                <option value="deepseek-moe-16b">DeepSeek-MoE 16B</option>
+                            </optgroup>
                         </select>
                     </div>
 
@@ -67,6 +75,42 @@
                             <label for="seq-len">Max Seq Length:</label>
                             <input type="number" id="seq-len" value="4096" min="1">
                         </div>
+                    </div>
+                </section>
+
+                <!-- MoE (Mixture of Experts) Settings -->
+                <section class="config-section">
+                    <h3>Mixture of Experts (MoE)</h3>
+                    <div class="form-group" data-tooltip="Enable Mixture of Experts architecture">
+                        <label for="moe-enabled">
+                            <input type="checkbox" id="moe-enabled">
+                            Enable MoE
+                        </label>
+                    </div>
+
+                    <div id="moe-fields" style="display:none;">
+                        <div class="form-grid">
+                            <div class="form-group" data-tooltip="Total number of experts in the model">
+                                <label for="num-experts">Number of Experts:</label>
+                                <input type="number" id="num-experts" value="8" min="1" max="256">
+                            </div>
+
+                            <div class="form-group" data-tooltip="Number of experts activated per token (top-k routing)">
+                                <label for="top-k">Top-K (active experts):</label>
+                                <input type="number" id="top-k" value="2" min="1" max="8">
+                            </div>
+
+                            <div class="form-group" data-tooltip="Expert intermediate layer size (default: 4x hidden_size)">
+                                <label for="expert-intermediate-size">Expert Intermediate Size:</label>
+                                <input type="number" id="expert-intermediate-size" value="" placeholder="Auto (4x hidden)" min="1">
+                            </div>
+
+                            <div class="form-group" data-tooltip="Shared expert intermediate size (for models like GLM)">
+                                <label for="shared-expert-size">Shared Expert Size:</label>
+                                <input type="number" id="shared-expert-size" value="" placeholder="None" min="1">
+                            </div>
+                        </div>
+                        <p class="info-text">With MoE, only <strong><span id="active-experts-display">2</span></strong> of <strong><span id="total-experts-display">8</span></strong> experts are active per token, reducing activation memory.</p>
                     </div>
                 </section>
 

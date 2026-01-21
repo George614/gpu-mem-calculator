@@ -127,6 +127,10 @@ class DeepSpeedEngine(BaseEngine):
             num_attention_heads=self.model_config.num_attention_heads,
             tensor_parallel_size=self.parallelism_config.tensor_parallel_size,
             activation_checkpointing=self.training_config.activation_checkpointing,
+            moe_enabled=self.model_config.moe_enabled,
+            num_experts=self.model_config.num_experts,
+            top_k=self.model_config.top_k,
+            expert_intermediate_size=self.model_config.expert_intermediate_size,
         )
 
         # Overhead
@@ -220,6 +224,10 @@ class DeepSpeedEngine(BaseEngine):
             num_attention_heads=self.model_config.num_attention_heads,
             tensor_parallel_size=self.parallelism_config.tensor_parallel_size,
             activation_checkpointing=self.training_config.activation_checkpointing,
+            moe_enabled=self.model_config.moe_enabled,
+            num_experts=self.model_config.num_experts,
+            top_k=self.model_config.top_k,
+            expert_intermediate_size=self.model_config.expert_intermediate_size,
         )
 
         # Overhead

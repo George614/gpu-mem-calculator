@@ -55,6 +55,18 @@ class GPUMemCalculator {
             });
         });
 
+        // MoE checkbox - toggle visibility of MoE fields
+        document.getElementById('moe-enabled').addEventListener('change', (e) => {
+            this.toggleMoEFields(e.target.checked);
+        });
+
+        // MoE field changes - update display
+        ['num-experts', 'top-k'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                this.updateMoEDisplay();
+            });
+        });
+
         // Calculate button
         document.getElementById('calculate-btn').addEventListener('click', () => {
             this.calculateMemory();
@@ -86,6 +98,8 @@ class GPUMemCalculator {
             // Model settings
             'model-name', 'num-params', 'num-layers', 'hidden-size', 'num-heads',
             'vocab-size', 'seq-len',
+            // MoE settings
+            'moe-enabled', 'num-experts', 'top-k', 'expert-intermediate-size', 'shared-expert-size',
             // Training settings
             'batch-size', 'batch-size-slider', 'grad-accum', 'optimizer', 'dtype',
             'activation-checkpointing',
@@ -166,6 +180,28 @@ class GPUMemCalculator {
             if (config.model.num_attention_heads) document.getElementById('num-heads').value = config.model.num_attention_heads;
             if (config.model.vocab_size) document.getElementById('vocab-size').value = config.model.vocab_size;
             if (config.model.max_seq_len) document.getElementById('seq-len').value = config.model.max_seq_len;
+        }
+
+        // Apply MoE configuration
+        if (config.model.moe_enabled !== undefined) {
+            document.getElementById('moe-enabled').checked = config.model.moe_enabled;
+            this.toggleMoEFields(config.model.moe_enabled);
+
+            if (config.model.moe_enabled) {
+                if (config.model.num_experts) {
+                    document.getElementById('num-experts').value = config.model.num_experts;
+                }
+                if (config.model.top_k) {
+                    document.getElementById('top-k').value = config.model.top_k;
+                }
+                if (config.model.expert_intermediate_size) {
+                    document.getElementById('expert-intermediate-size').value = config.model.expert_intermediate_size;
+                }
+                if (config.model.shared_expert_intermediate_size) {
+                    document.getElementById('shared-expert-size').value = config.model.shared_expert_intermediate_size;
+                }
+                this.updateMoEDisplay();
+            }
         }
 
         // Apply training configuration
@@ -284,6 +320,22 @@ class GPUMemCalculator {
         document.getElementById('effective-gpus').textContent = effectiveGPUs;
     }
 
+    toggleMoEFields(enabled) {
+        const moeFields = document.getElementById('moe-fields');
+        moeFields.style.display = enabled ? 'block' : 'none';
+        if (enabled) {
+            this.updateMoEDisplay();
+        }
+    }
+
+    updateMoEDisplay() {
+        const numExperts = parseInt(document.getElementById('num-experts').value) || 8;
+        const topK = parseInt(document.getElementById('top-k').value) || 2;
+
+        document.getElementById('total-experts-display').textContent = numExperts;
+        document.getElementById('active-experts-display').textContent = topK;
+    }
+
     collectFormData() {
         // Get GPU memory value
         let gpuMem = document.getElementById('gpu-model').value;
@@ -296,6 +348,11 @@ class GPUMemCalculator {
         // Get engine type
         const engineType = document.getElementById('engine-type').value;
 
+        // Get MoE parameters
+        const moeEnabled = document.getElementById('moe-enabled').checked;
+        const expertIntermediateSize = document.getElementById('expert-intermediate-size').value;
+        const sharedExpertSize = document.getElementById('shared-expert-size').value;
+
         return {
             model: {
                 name: document.getElementById('model-name').value,
@@ -305,6 +362,11 @@ class GPUMemCalculator {
                 num_attention_heads: parseInt(document.getElementById('num-heads').value),
                 vocab_size: parseInt(document.getElementById('vocab-size').value),
                 max_seq_len: parseInt(document.getElementById('seq-len').value),
+                moe_enabled: moeEnabled,
+                num_experts: moeEnabled ? parseInt(document.getElementById('num-experts').value) : 1,
+                top_k: moeEnabled ? parseInt(document.getElementById('top-k').value) : 1,
+                expert_intermediate_size: expertIntermediateSize ? parseInt(expertIntermediateSize) : null,
+                shared_expert_intermediate_size: sharedExpertSize ? parseInt(sharedExpertSize) : null,
             },
             training: {
                 batch_size: parseInt(document.getElementById('batch-size').value),
@@ -439,6 +501,15 @@ class GPUMemCalculator {
         document.getElementById('num-heads').value = '32';
         document.getElementById('vocab-size').value = '32000';
         document.getElementById('seq-len').value = '4096';
+
+        // Reset MoE fields
+        document.getElementById('moe-enabled').checked = false;
+        document.getElementById('num-experts').value = '8';
+        document.getElementById('top-k').value = '2';
+        document.getElementById('expert-intermediate-size').value = '';
+        document.getElementById('shared-expert-size').value = '';
+        this.toggleMoEFields(false);
+
         document.getElementById('batch-size').value = '4';
         document.getElementById('batch-size-slider').value = '4';
         document.getElementById('grad-accum').value = '4';

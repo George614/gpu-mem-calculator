@@ -112,6 +112,10 @@ def calculate_activation_memory(
     num_attention_heads: int,
     tensor_parallel_size: int = 1,
     activation_checkpointing: int = 0,
+    moe_enabled: bool = False,
+    num_experts: int = 1,
+    top_k: int = 1,
+    expert_intermediate_size: int | None = None,
 ) -> float:
     """Calculate approximate memory in GB for activations.
 
@@ -121,6 +125,9 @@ def calculate_activation_memory(
     Formula approximation from:
     https://arxiv.org/abs/2204.13323
 
+    For MoE models, activation memory is reduced because only top_k experts
+    are active per token, not all experts.
+
     Args:
         batch_size: Batch size per GPU
         seq_len: Sequence length
@@ -129,6 +136,10 @@ def calculate_activation_memory(
         num_attention_heads: Number of attention heads
         tensor_parallel_size: Tensor parallelism degree
         activation_checkpointing: Checkpointing level (0-4)
+        moe_enabled: Whether model uses Mixture of Experts
+        num_experts: Total number of experts (for MoE)
+        top_k: Number of active experts per token (for MoE)
+        expert_intermediate_size: Expert intermediate layer size (for MoE)
 
     Returns:
         Memory in GB
@@ -141,12 +152,32 @@ def calculate_activation_memory(
 
     bytes_per_token_per_layer = hidden_size * 16  # Rough estimate
 
+    # For MoE models, adjust activation memory based on active experts
+    moe_multiplier = 1.0
+    if moe_enabled and num_experts > 1:
+        # Only top_k experts are active per token
+        # Base ratio of active experts
+        expert_ratio = top_k / num_experts
+
+        # Add router overhead (gating network activations)
+        router_overhead = 0.1
+
+        moe_multiplier = min(1.0, expert_ratio + router_overhead)
+
+    # For MoE, experts typically have larger intermediate sizes
+    if moe_enabled and expert_intermediate_size:
+        # Scale up slightly for larger expert intermediate layers
+        # Typical expert intermediate size is 4x hidden_size (vs 2x for dense)
+        size_ratio = expert_intermediate_size / (hidden_size * 2)
+        moe_multiplier *= min(2.0, size_ratio)  # Cap at 2x increase
+
     # Total activation memory
     total_bytes = (
         batch_size
         * seq_len
         * num_layers
         * bytes_per_token_per_layer
+        * moe_multiplier
         / tensor_parallel_size
     )
 

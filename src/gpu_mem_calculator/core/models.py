@@ -59,17 +59,51 @@ class ModelConfig(BaseModel):
         description="Largest layer parameters (auto-calculated if not provided)",
     )
 
+    # MoE (Mixture of Experts) parameters
+    moe_enabled: bool = Field(default=False, description="Enable Mixture of Experts")
+    num_experts: int = Field(default=8, ge=1, description="Number of experts in MoE")
+    top_k: int = Field(default=2, ge=1, description="Number of experts activated per token (top-k)")
+    expert_intermediate_size: int | None = Field(
+        default=None,
+        gt=0,
+        description="Expert intermediate layer size (defaults to 4x hidden_size)",
+    )
+    shared_expert_intermediate_size: int | None = Field(
+        default=None,
+        gt=0,
+        description="Shared expert intermediate size (for models like GLM with shared experts)",
+    )
+
     @field_validator("largest_layer_params")
     @classmethod
     def calculate_largest_layer(cls, v: int | None, info) -> int | None:
         """Calculate largest layer params if not provided."""
         if v is None:
-            # Estimate as attention output projection + MLP first layer
-            # Typically: hidden_size * hidden_size * 3 (for QKV) + hidden_size * 4 * hidden_size (for MLP)
+            # Estimate based on whether MoE is enabled
             hidden = info.data.get("hidden_size", 0)
+            moe_enabled = info.data.get("moe_enabled", False)
+            num_experts = info.data.get("num_experts", 1)
+
             if hidden:
-                return int(hidden * hidden * 4)  # Rough estimate
+                if moe_enabled:
+                    # For MoE: largest layer includes expert parameters
+                    # Typical expert: hidden_size * intermediate_size
+                    expert_intermediate = info.data.get("expert_intermediate_size") or hidden * 4
+                    return int(hidden * expert_intermediate * 2)  # Rough estimate for MoE layer
+                else:
+                    # Dense model: attention output + MLP
+                    return int(hidden * hidden * 4)  # Rough estimate
         return v
+
+    @property
+    def effective_num_experts(self) -> int:
+        """Get effective number of experts (returns 1 if MoE disabled)."""
+        return self.num_experts if self.moe_enabled else 1
+
+    @property
+    def active_experts(self) -> int:
+        """Get number of active experts per token (top_k or 1 if dense)."""
+        return self.top_k if self.moe_enabled else 1
 
 
 class TrainingConfig(BaseModel):

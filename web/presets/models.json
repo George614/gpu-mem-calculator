@@ -33,5 +33,174 @@
         "gpu_memory_gb": 80
       }
     }
+  },
+  "mixtral-8x7b": {
+    "display_name": "Mixtral 8x7B (MoE)",
+    "description": "Mistral AI Mixtral 8x7B - 8 experts, 2 active per token",
+    "config": {
+      "model": {
+        "name": "mixtral-8x7b",
+        "num_parameters": "46.7B",
+        "num_layers": 32,
+        "hidden_size": 4096,
+        "num_attention_heads": 32,
+        "vocab_size": 32000,
+        "max_seq_len": 32768,
+        "moe_enabled": true,
+        "num_experts": 8,
+        "top_k": 2,
+        "expert_intermediate_size": 14336
+      },
+      "training": {
+        "batch_size": 2,
+        "gradient_accumulation_steps": 4,
+        "optimizer": "adamw",
+        "dtype": "bf16",
+        "activation_checkpointing": 2
+      },
+      "parallelism": {
+        "tensor_parallel_size": 2,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 4,
+        "sequence_parallel": false
+      },
+      "engine": {
+        "type": "deepspeed",
+        "zero_stage": 3,
+        "offload_optimizer": "cpu",
+        "offload_param": "none"
+      },
+      "hardware": {
+        "num_gpus": 8,
+        "gpu_memory_gb": 80
+      }
+    }
+  },
+  "glm-4-9b": {
+    "display_name": "GLM-4 9B (MoE)",
+    "description": "Tsinghua University GLM-4 9B with MoE architecture",
+    "config": {
+      "model": {
+        "name": "glm-4-9b",
+        "num_parameters": "9B",
+        "num_layers": 40,
+        "hidden_size": 4096,
+        "num_attention_heads": 32,
+        "vocab_size": 151552,
+        "max_seq_len": 8192,
+        "moe_enabled": true,
+        "num_experts": 4,
+        "top_k": 2,
+        "expert_intermediate_size": 10240,
+        "shared_expert_intermediate_size": 10240
+      },
+      "training": {
+        "batch_size": 4,
+        "gradient_accumulation_steps": 4,
+        "optimizer": "adamw",
+        "dtype": "bf16",
+        "activation_checkpointing": 2
+      },
+      "parallelism": {
+        "tensor_parallel_size": 1,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 4,
+        "sequence_parallel": false
+      },
+      "engine": {
+        "type": "deepspeed",
+        "zero_stage": 2,
+        "offload_optimizer": "none",
+        "offload_param": "none"
+      },
+      "hardware": {
+        "num_gpus": 4,
+        "gpu_memory_gb": 80
+      }
+    }
+  },
+  "qwen1.5-moe-a14b": {
+    "display_name": "Qwen1.5-MoE-A14B",
+    "description": "Alibaba Qwen1.5 MoE - 2.7B active params per token",
+    "config": {
+      "model": {
+        "name": "qwen1.5-moe-a14b",
+        "num_parameters": "14.3B",
+        "num_layers": 28,
+        "hidden_size": 5120,
+        "num_attention_heads": 40,
+        "vocab_size": 151936,
+        "max_seq_len": 32768,
+        "moe_enabled": true,
+        "num_experts": 8,
+        "top_k": 4,
+        "expert_intermediate_size": 15360
+      },
+      "training": {
+        "batch_size": 2,
+        "gradient_accumulation_steps": 4,
+        "optimizer": "adamw",
+        "dtype": "bf16",
+        "activation_checkpointing": 2
+      },
+      "parallelism": {
+        "tensor_parallel_size": 2,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 4,
+        "sequence_parallel": false
+      },
+      "engine": {
+        "type": "deepspeed",
+        "zero_stage": 3,
+        "offload_optimizer": "cpu",
+        "offload_param": "none"
+      },
+      "hardware": {
+        "num_gpus": 8,
+        "gpu_memory_gb": 80
+      }
+    }
+  },
+  "deepseek-moe-16b": {
+    "display_name": "DeepSeek-MoE 16B",
+    "description": "DeepSeek MoE model with 16B parameters",
+    "config": {
+      "model": {
+        "name": "deepseek-moe-16b",
+        "num_parameters": "16B",
+        "num_layers": 28,
+        "hidden_size": 2048,
+        "num_attention_heads": 16,
+        "vocab_size": 102400,
+        "max_seq_len": 4096,
+        "moe_enabled": true,
+        "num_experts": 8,
+        "top_k": 2,
+        "expert_intermediate_size": 5632
+      },
+      "training": {
+        "batch_size": 4,
+        "gradient_accumulation_steps": 4,
+        "optimizer": "adamw",
+        "dtype": "bf16",
+        "activation_checkpointing": 2
+      },
+      "parallelism": {
+        "tensor_parallel_size": 2,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 4,
+        "sequence_parallel": false
+      },
+      "engine": {
+        "type": "deepspeed",
+        "zero_stage": 2,
+        "offload_optimizer": "none",
+        "offload_param": "none"
+      },
+      "hardware": {
+        "num_gpus": 8,
+        "gpu_memory_gb": 80
+      }
+    }
   }
 }

@@ -136,3 +136,56 @@ class BaseEngine(ABC):
             self.parallelism_config.tensor_parallel_size
             * self.parallelism_config.pipeline_parallel_size
         )
+
+    def calculate_moe_activation_multiplier(self) -> float:
+        """Calculate activation memory multiplier for MoE models.
+
+        For MoE models, activation memory depends on top_k (active experts per token)
+        rather than total number of experts. This is because only top_k experts
+        are activated per token during forward/backward pass.
+
+        Returns:
+            Multiplier for activation memory (1.0 for dense models, <1 for MoE)
+        """
+        if not self.model_config.moe_enabled:
+            return 1.0
+
+        # For MoE: only top_k experts are active per token
+        # Activation memory scales with active_experts / total_experts
+        # But we also have router overhead and gating network activations
+
+        num_experts = self.model_config.num_experts
+        top_k = self.model_config.top_k
+
+        # Base activation ratio: only top_k experts active
+        activation_ratio = top_k / num_experts
+
+        # Add router overhead (typically 5-15% extra for gating)
+        router_overhead = 0.1
+
+        # For models with shared experts (like GLM), adjust accordingly
+        if self.model_config.shared_expert_intermediate_size:
+            # Shared expert is always active, so add its contribution
+            # This is a simplified approximation
+            activation_ratio = activation_ratio + (1.0 / num_experts)
+
+        return min(1.0, activation_ratio + router_overhead)
+
+    def calculate_moe_parameter_ratio(self) -> float:
+        """Calculate effective parameter ratio for MoE models.
+
+        For MoE models, only top_k experts are used during forward pass,
+        but all expert parameters are stored in memory.
+
+        Returns:
+            Ratio of active parameters to total parameters (for memory estimation)
+        """
+        if not self.model_config.moe_enabled:
+            return 1.0
+
+        # All expert parameters are stored, but only top_k are used per token
+        # For gradient calculation, we need gradients for all experts
+        # So parameter storage = 1.0 (all params stored)
+        # But we can use this for inference-specific calculations
+
+        return 1.0  # All parameters stored in memory
