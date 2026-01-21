@@ -48,9 +48,9 @@ dev = [
 gpu-mem-calc = "gpu_mem_calculator.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/gpu-mem-calculator"
-Repository = "https://github.com/yourusername/gpu-mem-calculator"
-Issues = "https://github.com/yourusername/gpu-mem-calculator/issues"
+Homepage = "https://github.com/George614/gpu-mem-calculator"
+Repository = "https://github.com/George614/gpu-mem-calculator"
+Issues = "https://github.com/George614/gpu-mem-calculator/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

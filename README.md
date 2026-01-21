@@ -16,7 +16,7 @@ A versatile Python application for calculating GPU memory requirements for train
 ### From source
 
 ```bash
-git clone https://github.com/yourusername/gpu_mem_calculator.git
+git clone https://github.com/George614/gpu-mem_calculator.git
 cd gpu_mem_calculator
 pip install -e .
 ```
