@@ -2,7 +2,9 @@
 
 A versatile Python application for calculating GPU memory requirements for training Large Language Models with support for multiple training engines including PyTorch DDP, DeepSpeed ZeRO, Megatron-LM, and FSDP.
 
-![GPU Memory Calculator Screenshot](screenshot.png)
+<p align="center">
+  <img src="screenshot.png" alt="GPU Memory Calculator Screenshot" width="800">
+</p>
 
 ## Features
 
