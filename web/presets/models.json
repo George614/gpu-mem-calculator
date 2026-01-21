@@ -36,7 +36,7 @@
   },
   "mixtral-8x7b": {
     "display_name": "Mixtral 8x7B (MoE)",
-    "description": "Mistral AI Mixtral 8x7B - 8 experts, 2 active per token",
+    "description": "Mistral AI Mixtral 8x7B - 46.7B total params, ~12.9B active per token",
     "config": {
       "model": {
         "name": "mixtral-8x7b",
@@ -119,23 +119,66 @@
       }
     }
   },
-  "glm-4.7-10b": {
-    "display_name": "GLM-4.7 10B (MoE)",
-    "description": "Tsinghua University GLM-4.7 - Latest MoE model with enhanced performance",
+  "glm-4.7-355b": {
+    "display_name": "GLM-4.7 355B (MoE)",
+    "description": "Tsinghua University GLM-4.7 - Latest flagship with 355B total / 32B active params",
     "config": {
       "model": {
-        "name": "glm-4.7-10b",
-        "num_parameters": "10B",
-        "num_layers": 42,
-        "hidden_size": 4608,
-        "num_attention_heads": 36,
+        "name": "glm-4.7-355b",
+        "num_parameters": "355B",
+        "num_layers": 46,
+        "hidden_size": 4096,
+        "num_attention_heads": 96,
         "vocab_size": 151552,
-        "max_seq_len": 32768,
+        "max_seq_len": 131072,
         "moe_enabled": true,
-        "num_experts": 6,
-        "top_k": 2,
-        "expert_intermediate_size": 12032,
-        "shared_expert_intermediate_size": 12032
+        "num_experts": 128,
+        "top_k": 8,
+        "expert_intermediate_size": 1408,
+        "shared_expert_intermediate_size": 10944
+      },
+      "training": {
+        "batch_size": 1,
+        "gradient_accumulation_steps": 16,
+        "optimizer": "adamw",
+        "dtype": "bf16",
+        "activation_checkpointing": 4
+      },
+      "parallelism": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 4,
+        "data_parallel_size": 16,
+        "sequence_parallel": true
+      },
+      "engine": {
+        "type": "deepspeed",
+        "zero_stage": 3,
+        "offload_optimizer": "cpu",
+        "offload_param": "cpu"
+      },
+      "hardware": {
+        "num_gpus": 512,
+        "gpu_memory_gb": 80
+      }
+    }
+  },
+  "glm-4.5-air-106b": {
+    "display_name": "GLM-4.5 Air 106B (MoE) ⭐ Air",
+    "description": "Tsinghua University GLM-4.5 Air - 106B total / 12B active params, optimized for deployment",
+    "config": {
+      "model": {
+        "name": "glm-4.5-air-106b",
+        "num_parameters": "106B",
+        "num_layers": 46,
+        "hidden_size": 4096,
+        "num_attention_heads": 96,
+        "vocab_size": 151552,
+        "max_seq_len": 131072,
+        "moe_enabled": true,
+        "num_experts": 128,
+        "top_k": 8,
+        "expert_intermediate_size": 1408,
+        "shared_expert_intermediate_size": 10944
       },
       "training": {
         "batch_size": 2,
@@ -145,9 +188,9 @@
         "activation_checkpointing": 2
       },
       "parallelism": {
-        "tensor_parallel_size": 2,
-        "pipeline_parallel_size": 1,
-        "data_parallel_size": 4,
+        "tensor_parallel_size": 4,
+        "pipeline_parallel_size": 2,
+        "data_parallel_size": 8,
         "sequence_parallel": false
       },
       "engine": {
@@ -157,61 +200,18 @@
         "offload_param": "none"
       },
       "hardware": {
-        "num_gpus": 8,
+        "num_gpus": 64,
         "gpu_memory_gb": 80
       }
     }
   },
-  "glm-4.5-air-10b": {
-    "display_name": "GLM-4.5 Air 10B (MoE)",
-    "description": "Tsinghua University GLM-4.5 Air - Efficient MoE model optimized for deployment",
+  "qwen1.5-moe-a2.7b": {
+    "display_name": "Qwen1.5-MoE-A2.7B",
+    "description": "Alibaba Qwen1.5 MoE - 14B total params, 2.7B active per token",
     "config": {
       "model": {
-        "name": "glm-4.5-air-10b",
-        "num_parameters": "10B",
-        "num_layers": 40,
-        "hidden_size": 5120,
-        "num_attention_heads": 40,
-        "vocab_size": 151552,
-        "max_seq_len": 32768,
-        "moe_enabled": true,
-        "num_experts": 8,
-        "top_k": 2,
-        "expert_intermediate_size": 13312,
-        "shared_expert_intermediate_size": 13312
-      },
-      "training": {
-        "batch_size": 4,
-        "gradient_accumulation_steps": 4,
-        "optimizer": "adamw",
-        "dtype": "bf16",
-        "activation_checkpointing": 2
-      },
-      "parallelism": {
-        "tensor_parallel_size": 1,
-        "pipeline_parallel_size": 1,
-        "data_parallel_size": 8,
-        "sequence_parallel": false
-      },
-      "engine": {
-        "type": "deepspeed",
-        "zero_stage": 2,
-        "offload_optimizer": "none",
-        "offload_param": "none"
-      },
-      "hardware": {
-        "num_gpus": 8,
-        "gpu_memory_gb": 80
-      }
-    }
-  },
-  "qwen1.5-moe-a14b": {
-    "display_name": "Qwen1.5-MoE-A14B",
-    "description": "Alibaba Qwen1.5 MoE - 2.7B active params per token",
-    "config": {
-      "model": {
-        "name": "qwen1.5-moe-a14b",
-        "num_parameters": "14.3B",
+        "name": "qwen1.5-moe-a2.7b",
+        "num_parameters": "14B",
         "num_layers": 28,
         "hidden_size": 5120,
         "num_attention_heads": 40,
@@ -249,20 +249,21 @@
   },
   "deepseek-moe-16b": {
     "display_name": "DeepSeek-MoE 16B",
-    "description": "DeepSeek MoE model with 16B parameters",
+    "description": "DeepSeek MoE model with 16.4B total params, ~2.7B active per token",
     "config": {
       "model": {
         "name": "deepseek-moe-16b",
-        "num_parameters": "16B",
+        "num_parameters": "16.4B",
         "num_layers": 28,
         "hidden_size": 2048,
         "num_attention_heads": 16,
         "vocab_size": 102400,
         "max_seq_len": 4096,
         "moe_enabled": true,
-        "num_experts": 8,
-        "top_k": 2,
-        "expert_intermediate_size": 5632
+        "num_experts": 64,
+        "top_k": 6,
+        "expert_intermediate_size": 1408,
+        "shared_expert_intermediate_size": 10944
       },
       "training": {
         "batch_size": 4,
