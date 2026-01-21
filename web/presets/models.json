@@ -119,6 +119,92 @@
       }
     }
   },
+  "glm-4.7-10b": {
+    "display_name": "GLM-4.7 10B (MoE)",
+    "description": "Tsinghua University GLM-4.7 - Latest MoE model with enhanced performance",
+    "config": {
+      "model": {
+        "name": "glm-4.7-10b",
+        "num_parameters": "10B",
+        "num_layers": 42,
+        "hidden_size": 4608,
+        "num_attention_heads": 36,
+        "vocab_size": 151552,
+        "max_seq_len": 32768,
+        "moe_enabled": true,
+        "num_experts": 6,
+        "top_k": 2,
+        "expert_intermediate_size": 12032,
+        "shared_expert_intermediate_size": 12032
+      },
+      "training": {
+        "batch_size": 2,
+        "gradient_accumulation_steps": 8,
+        "optimizer": "adamw",
+        "dtype": "bf16",
+        "activation_checkpointing": 2
+      },
+      "parallelism": {
+        "tensor_parallel_size": 2,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 4,
+        "sequence_parallel": false
+      },
+      "engine": {
+        "type": "deepspeed",
+        "zero_stage": 3,
+        "offload_optimizer": "cpu",
+        "offload_param": "none"
+      },
+      "hardware": {
+        "num_gpus": 8,
+        "gpu_memory_gb": 80
+      }
+    }
+  },
+  "glm-4.5-air-10b": {
+    "display_name": "GLM-4.5 Air 10B (MoE)",
+    "description": "Tsinghua University GLM-4.5 Air - Efficient MoE model optimized for deployment",
+    "config": {
+      "model": {
+        "name": "glm-4.5-air-10b",
+        "num_parameters": "10B",
+        "num_layers": 40,
+        "hidden_size": 5120,
+        "num_attention_heads": 40,
+        "vocab_size": 151552,
+        "max_seq_len": 32768,
+        "moe_enabled": true,
+        "num_experts": 8,
+        "top_k": 2,
+        "expert_intermediate_size": 13312,
+        "shared_expert_intermediate_size": 13312
+      },
+      "training": {
+        "batch_size": 4,
+        "gradient_accumulation_steps": 4,
+        "optimizer": "adamw",
+        "dtype": "bf16",
+        "activation_checkpointing": 2
+      },
+      "parallelism": {
+        "tensor_parallel_size": 1,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 8,
+        "sequence_parallel": false
+      },
+      "engine": {
+        "type": "deepspeed",
+        "zero_stage": 2,
+        "offload_optimizer": "none",
+        "offload_param": "none"
+      },
+      "hardware": {
+        "num_gpus": 8,
+        "gpu_memory_gb": 80
+      }
+    }
+  },
   "qwen1.5-moe-a14b": {
     "display_name": "Qwen1.5-MoE-A14B",
     "description": "Alibaba Qwen1.5 MoE - 2.7B active params per token",
