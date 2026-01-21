@@ -1,6 +1,9 @@
 """PyTorch DDP (Distributed Data Parallel) engine implementation.
 
 This is the baseline implementation without any memory optimizations.
+
+Reference: https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
+Reference: https://blog.eleuther.ai/transformer-math/
 """
 
 from gpu_mem_calculator.core.formulas import (

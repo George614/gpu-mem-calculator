@@ -87,18 +87,25 @@ def calculate_optimizer_memory(
 
     match optimizer.lower():
         case "adam" | "adamw":
-            # Adam: momentum (4 bytes) + variance (4 bytes) = 8 bytes per param
-            optimizer_bytes_per_param = 8.0
+            # Adam/AdamW optimizer states: 12 bytes per param
+            # - FP32 parameter copy: 4 bytes
+            # - Momentum (fp32): 4 bytes
+            # - Variance (fp32): 4 bytes
+            # Reference: https://blog.eleuther.ai/transformer-math/#optimizer-states
+            # Reference: https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/
+            # Reference: https://deepspeed.readthedocs.io/en/latest/memory.html
+            optimizer_bytes_per_param = 12.0
         case "adamw_8bit":
             # 8-bit Adam: ~2 bytes per param (quantized states)
+            # Reference: bitsandbytes 8-bit optimizer
             optimizer_bytes_per_param = 2.0
         case "sgd":
-            # SGD: just momentum (4 bytes) if using momentum, 0 if not
+            # SGD: momentum (4 bytes) if using momentum, 0 if not
             # Assuming momentum is used
             optimizer_bytes_per_param = 4.0
         case _:
             # Default to Adam
-            optimizer_bytes_per_param = 8.0
+            optimizer_bytes_per_param = 12.0
 
     total_bytes = num_params * optimizer_bytes_per_param
     return gb_from_bytes(total_bytes)
@@ -119,11 +126,30 @@ def calculate_activation_memory(
 ) -> float:
     """Calculate approximate memory in GB for activations.
 
-    This is a rough estimate based on transformer architecture.
-    Actual activation memory depends on many factors.
+    This provides an estimate based on transformer architecture. Actual
+    activation memory depends on many factors including the specific
+    model implementation and framework.
 
-    Formula approximation from:
-    https://arxiv.org/abs/2204.13323
+    Reference: https://blog.eleuther.ai/transformer-math/#activations
+    Reference: https://arxiv.org/abs/2204.13323 ("Reducing Activation Recomputation
+               in Large Transformer Models")
+
+    According to EleutherAI Transformer Math 101, for selective activation
+    checkpointing (the most common approach), the formula is:
+
+        sbhL(10 + 24/t) bytes
+
+    Where:
+    - s = sequence length (seq_len)
+    - b = batch size (batch_size)
+    - h = hidden size (hidden_size)
+    - L = number of layers (num_layers)
+    - t = tensor parallel size (tensor_parallel_size)
+
+    This implementation uses a simplified heuristic that approximates
+    this formula: hidden_size * 16 bytes per token per layer. This
+    provides a reasonable estimate for typical model configurations
+    while being simple to understand and modify.
 
     For MoE models, activation memory is reduced because only top_k experts
     are active per token, not all experts.
@@ -146,11 +172,13 @@ def calculate_activation_memory(
     """
     from gpu_mem_calculator.utils.precision import gb_from_bytes
 
-    # Approximate activation memory per token
+    # Approximate activation memory per token per layer
+    # Based on EleutherAI formula: sbhL(10 + 24/t)
+    # For t=1: ~10-24 bytes per token per layer depending on architecture
+    # We use 16 as a middle-ground estimate
     # This includes attention outputs, MLP activations, layer norms, etc.
-    # Rough estimate: ~10-20 bytes per token per layer per hidden dimension
 
-    bytes_per_token_per_layer = hidden_size * 16  # Rough estimate
+    bytes_per_token_per_layer = hidden_size * 16  # Heuristic estimate
 
     # For MoE models, adjust activation memory based on active experts
     moe_multiplier = 1.0

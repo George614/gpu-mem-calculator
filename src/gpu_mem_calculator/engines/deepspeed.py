@@ -92,10 +92,18 @@ class DeepSpeedEngine(BaseEngine):
 
         ZeRO-1 shards optimizer states across data parallel GPUs.
 
+        Reference: https://deepspeed.readthedocs.io/en/latest/memory.html
+        Reference: https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/
+
         Memory formula:
         - offload_optimizer=cpu: 2 * params (fp16 params only on GPU)
         - offload_optimizer=none: 4 * params (fp16 params + fp32 params) +
-          16 * params / num_gpus (sharded optimizer states)
+          12 * params / num_gpus (sharded optimizer states)
+
+        Note: Optimizer states = 12 bytes per param for Adam/AdamW
+        - 4 bytes: FP32 parameter copy
+        - 4 bytes: Momentum (FP32)
+        - 4 bytes: Variance (FP32)
         """
         num_params = self.model_config.num_parameters
         num_gpus = self.total_num_gpus
@@ -109,13 +117,14 @@ class DeepSpeedEngine(BaseEngine):
         gradients_gb = gb_from_bytes(num_params * 2)
 
         # Optimizer states (sharded across GPUs, possibly offloaded to CPU)
+        # 12 bytes per param for Adam/AdamW (FP32 params copy + momentum + variance)
         if offload_optimizer == OffloadDevice.CPU:
             # Offloaded to CPU, minimal GPU memory for optimizer
             optimizer_gb = 0.0
-            cpu_memory_gb = gb_from_bytes(num_params * 8)  # Full optimizer on CPU
+            cpu_memory_gb = gb_from_bytes(num_params * 12)  # Full optimizer on CPU
         else:
-            # Sharded across GPUs: 8 bytes / num_gpus per GPU
-            optimizer_gb = gb_from_bytes((num_params * 8) / num_gpus)
+            # Sharded across GPUs: 12 bytes / num_gpus per GPU
+            optimizer_gb = gb_from_bytes((num_params * 12) / num_gpus)
             cpu_memory_gb = 0.0
 
         # Activations (same as baseline)
@@ -155,13 +164,66 @@ class DeepSpeedEngine(BaseEngine):
 
         ZeRO-2 shards optimizer states AND gradients across data parallel GPUs.
 
-        Memory formula (same as ZeRO-1 for most cases):
-        - offload_optimizer=cpu: 2 * params
-        - offload_optimizer=none: 4 * params + 16 * params / num_gpus
+        Reference: https://deepspeed.readthedocs.io/en/latest/memory.html
+        Reference: https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/
+
+        Memory formula:
+        - offload_optimizer=cpu: 2 * params (fp16 params) + (2 * params / num_gpus) (sharded fp16 grads)
+        - offload_optimizer=none: 2 * params (fp16 params) + 2 * params / num_gpus (sharded fp16 grads) +
+          12 * params / num_gpus (sharded optimizer states)
+
+        Note: Unlike ZeRO-1, ZeRO-2 shards gradients across GPUs
         """
-        # ZeRO-2 has the same memory formula as ZeRO-1
-        # The difference is in communication patterns, not GPU memory
-        return self._calculate_zero1(offload_optimizer)
+        num_params = self.model_config.num_parameters
+        num_gpus = self.total_num_gpus
+        dtype = self.training_config.dtype.value
+        optimizer = self.training_config.optimizer.value
+
+        # Model parameters (fp16/bf16 on GPU) - NOT sharded in ZeRO-2
+        model_params_gb = gb_from_bytes(num_params * 2)  # FP16/BF16 = 2 bytes
+
+        # Gradients (fp16 on GPU) - SHARDED in ZeRO-2
+        gradients_gb = gb_from_bytes((num_params * 2) / num_gpus)
+
+        # Optimizer states (sharded across GPUs, possibly offloaded to CPU)
+        # 12 bytes per param for Adam/AdamW (FP32 params copy + momentum + variance)
+        if offload_optimizer == OffloadDevice.CPU:
+            # Offloaded to CPU, minimal GPU memory for optimizer
+            optimizer_gb = 0.0
+            cpu_memory_gb = gb_from_bytes(num_params * 12)  # Full optimizer on CPU
+        else:
+            # Sharded across GPUs: 12 bytes / num_gpus per GPU
+            optimizer_gb = gb_from_bytes((num_params * 12) / num_gpus)
+            cpu_memory_gb = 0.0
+
+        # Activations (same as baseline)
+        activations_gb = calculate_activation_memory(
+            batch_size=self.training_config.batch_size,
+            seq_len=self.model_config.max_seq_len,
+            hidden_size=self.model_config.hidden_size,
+            num_layers=self.model_config.num_layers,
+            num_attention_heads=self.model_config.num_attention_heads,
+            tensor_parallel_size=self.parallelism_config.tensor_parallel_size,
+            activation_checkpointing=self.training_config.activation_checkpointing,
+            moe_enabled=self.model_config.moe_enabled,
+            num_experts=self.model_config.num_experts,
+            top_k=self.model_config.top_k,
+            expert_intermediate_size=self.model_config.expert_intermediate_size,
+        )
+
+        # Overhead
+        base_memory = model_params_gb + gradients_gb + optimizer_gb + activations_gb
+        overhead_gb = calculate_overhead(base_memory)
+
+        breakdown = MemoryBreakdown(
+            model_params_gb=model_params_gb,
+            gradients_gb=gradients_gb,
+            optimizer_states_gb=optimizer_gb,
+            activations_gb=activations_gb,
+            overhead_gb=overhead_gb,
+        )
+
+        return self._create_result(breakdown, cpu_memory_gb)
 
     def _calculate_zero3(
         self,
@@ -173,17 +235,27 @@ class DeepSpeedEngine(BaseEngine):
 
         ZeRO-3 shards everything across GPUs.
 
+        Reference: https://deepspeed.readthedocs.io/en/latest/memory.html
+        Reference: https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/
+
         Memory formula:
-        - largest_layer_memory = 4 * largest_layer_params
+        - largest_layer_memory = 4 * largest_layer_params (fp16 params + fp16 grads)
 
         Case 1 (no offload):
           largest_layer_memory + 18 * params / num_gpus
+          (where 18 = 16 bytes optimizer states + 2 bytes fp16 params)
 
         Case 2 (param + optimizer offload to CPU):
           largest_layer_memory (main limit is CPU RAM)
 
         Case 3 (optimizer offload to CPU only):
           largest_layer_memory + 2 * params / num_gpus
+
+        Note: Optimizer states = 16 bytes per param for Adam/AdamW (FP32)
+        - 4 bytes: FP32 parameter copy
+        - 4 bytes: Momentum (FP32)
+        - 4 bytes: Variance (FP32)
+        - 4 bytes: Gradient (FP32 copy for optimizer update)
         """
         num_params = self.model_config.num_parameters
         num_gpus = self.total_num_gpus

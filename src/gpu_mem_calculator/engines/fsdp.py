@@ -1,6 +1,9 @@
 """FSDP (Fully Sharded Data Parallel) engine implementation.
 
 Implements memory calculations for PyTorch FSDP.
+
+Reference: https://pytorch.org/docs/stable/fsdp.html
+Reference: https://blog.eleuther.ai/transformer-math/
 """
 
 from gpu_mem_calculator.core.formulas import (
@@ -84,10 +87,18 @@ class FSDPEngine(BaseEngine):
         Shards gradients and optimizer states across GPUs.
         Similar to DeepSpeed ZeRO-2.
 
+        Reference: https://pytorch.org/tutorials/intermediate/FSDP_advanced.html
+        Reference: https://blog.eleuther.ai/transformer-math/
+
         Memory formula:
         - Model parameters: Full model on each GPU (not sharded)
         - Gradients: Sharded across GPUs
-        - Optimizer states: Sharded across GPUs
+        - Optimizer states: Sharded across GPUs (12 bytes per param for Adam/AdamW)
+
+        Note: Optimizer states = 12 bytes per param for Adam/AdamW
+        - 4 bytes: FP32 parameter copy
+        - 4 bytes: Momentum (FP32)
+        - 4 bytes: Variance (FP32)
         """
         num_params = self.model_config.num_parameters
         num_gpus = self.total_num_gpus
@@ -99,8 +110,8 @@ class FSDPEngine(BaseEngine):
         # Gradients (sharded)
         gradients_gb = gb_from_bytes((num_params * 2) / num_gpus)
 
-        # Optimizer states (sharded)
-        optimizer_gb = gb_from_bytes((num_params * 8) / num_gpus)  # FP32
+        # Optimizer states (sharded) - 12 bytes per param for Adam/AdamW
+        optimizer_gb = gb_from_bytes((num_params * 12) / num_gpus)  # FP32
 
         # Activations
         activations_gb = calculate_activation_memory(
@@ -137,29 +148,39 @@ class FSDPEngine(BaseEngine):
         Shards parameters, gradients, and optimizer states.
         Similar to DeepSpeed ZeRO-3.
 
+        Reference: https://pytorch.org/tutorials/intermediate/FSDP_advanced.html
+        Reference: https://blog.eleuther.ai/transformer-math/
+
         Memory formula:
         - Largest layer: 4 * largest_layer_params (fp16 params + fp16 grads)
-        - Remaining: Sharded across GPUs
+        - Remaining parameters and gradients: Sharded across GPUs (2 bytes fp16 each)
+        - Optimizer states: Sharded across GPUs (12 bytes per param for Adam/AdamW in FP32)
 
-        Total per GPU: largest_layer_memory + 18 * params / num_gpus
+        Total per GPU: largest_layer_memory + 2 * params / num_gpus + 2 * params / num_gpus + 12 * params / num_gpus
+                    = largest_layer_memory + 16 * params / num_gpus
+
+        Note: FSDP typically uses 12 bytes for optimizer states (not 16 like DeepSpeed ZeRO-3)
+        because FSDP doesn't keep an additional FP32 gradient copy in the optimizer states.
         """
         num_params = self.model_config.num_parameters
         num_gpus = self.total_num_gpus
 
-        # Largest layer memory (fp16 params + fp16 grads gathered)
+        # Largest layer memory (fp16 params + fp16 grads gathered during compute)
         largest_layer_memory_gb = gb_from_bytes(largest_layer_params * 4)
 
-        # Sharded parameters
+        # Sharded parameters (fp16)
         params_per_gpu_gb = gb_from_bytes((num_params * 2) / num_gpus)
 
-        # Sharded gradients
+        # Sharded gradients (fp16)
         gradients_per_gpu_gb = gb_from_bytes((num_params * 2) / num_gpus)
 
-        # Sharded optimizer states
-        optimizer_per_gpu_gb = gb_from_bytes((num_params * 16) / num_gpus)
+        # Sharded optimizer states (FP32 for Adam/AdamW)
+        # 12 bytes per param: 4 bytes fp32 params copy + 4 bytes momentum + 4 bytes variance
+        optimizer_per_gpu_gb = gb_from_bytes((num_params * 12) / num_gpus)
 
-        # Model params = largest layer
-        model_params_gb = largest_layer_memory_gb
+        # Model params in breakdown: largest layer (gathered) + sharded params
+        # This represents the total parameter memory on each GPU
+        model_params_gb = largest_layer_memory_gb + params_per_gpu_gb
 
         # Activations
         activations_gb = calculate_activation_memory(
@@ -178,7 +199,7 @@ class FSDPEngine(BaseEngine):
 
         # Overhead
         base_memory = (
-            model_params_gb
+            largest_layer_memory_gb
             + params_per_gpu_gb
             + gradients_per_gpu_gb
             + optimizer_per_gpu_gb
@@ -187,7 +208,7 @@ class FSDPEngine(BaseEngine):
         overhead_gb = calculate_overhead(base_memory)
 
         breakdown = MemoryBreakdown(
-            model_params_gb=model_params_gb + params_per_gpu_gb,
+            model_params_gb=model_params_gb,
             gradients_gb=gradients_per_gpu_gb,
             optimizer_states_gb=optimizer_per_gpu_gb,
             activations_gb=activations_gb,

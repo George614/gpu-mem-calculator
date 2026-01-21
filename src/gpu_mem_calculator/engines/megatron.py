@@ -2,6 +2,10 @@
 
 Implements memory calculations for Megatron-LM with tensor, pipeline,
 and sequence parallelism.
+
+Reference: https://github.com/NVIDIA/Megatron-LM
+Reference: https://arxiv.org/abs/1909.08053
+Reference: https://blog.eleuther.ai/transformer-math/
 """
 
 from gpu_mem_calculator.core.formulas import (
@@ -205,15 +209,15 @@ class MegatronDeepSpeedEngine(BaseEngine):
         else:
             gradients_gb = gb_from_bytes(params_per_gpu * 2)
 
-        # Optimizer states
+        # Optimizer states (12 bytes per param for Adam/AdamW in FP32)
         if offload_optimizer.value == "cpu":
             optimizer_gb = 0.0
         else:
             if zero_stage >= 1:
                 dp_size = self.parallelism_config.data_parallel_size
-                optimizer_gb = gb_from_bytes((params_per_gpu * 8) / dp_size)
+                optimizer_gb = gb_from_bytes((params_per_gpu * 12) / dp_size)
             else:
-                optimizer_gb = gb_from_bytes(params_per_gpu * 8)
+                optimizer_gb = gb_from_bytes(params_per_gpu * 12)
 
         # Overhead
         base_memory = model_params_gb + gradients_gb + optimizer_gb + activations_gb
