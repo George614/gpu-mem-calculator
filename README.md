@@ -41,6 +41,27 @@ pip install -e ".[dev]"
 
 ### Command Line Interface
 
+#### Using model presets (Recommended)
+
+The calculator includes pre-configured model presets for popular LLMs:
+
+```bash
+# List all available presets
+gpu-mem-calc presets
+
+# Calculate with a preset
+gpu-mem-calc calculate --preset llama2-7b
+gpu-mem-calc calculate --preset mixtral-8x7b --format json
+
+# List presets in table format
+gpu-mem-calc presets --format table
+```
+
+Available presets include:
+- **Dense Models**: LLaMA 2 (7B, 13B, 70B), GPT-3 (175B)
+- **MoE Models**: Mixtral 8x7B, GLM-4 (9B), GLM-4.7 (355B), GLM-4.5 Air (106B),
+  Qwen1.5-MoE-A2.7B, DeepSeek-MoE (16B)
+
 #### Calculate from config file
 
 ```bash
@@ -237,7 +258,7 @@ gpu-mem-calc calculate --config configs/pytorch_ddp_example.json
 ## Web UI Features
 
 - **Interactive Form**: Easy-to-use interface for tweaking hyperparameters
-- **Preset Loading**: Quick-load popular model configurations
+- **Unified Presets**: Same model presets available in CLI and web interface
 - **Real-time Validation**: Instant feedback on configuration validity
 - **Visual Breakdown**: Bar chart showing memory component distribution
 - **Feasibility Indicators**: Color-coded memory utilization status

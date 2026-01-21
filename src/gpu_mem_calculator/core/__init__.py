@@ -8,7 +8,6 @@ from gpu_mem_calculator.core.models import (
     ParallelismConfig,
     TrainingConfig,
 )
-from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 from gpu_mem_calculator.core.formulas import Precision
 
 __all__ = [
@@ -18,6 +17,8 @@ __all__ = [
     "EngineConfig",
     "EngineType",
     "GPUConfig",
-    "GPUMemoryCalculator",
     "Precision",
 ]
+
+# Import GPUMemoryCalculator separately to avoid circular import
+# Use: from gpu_mem_calculator.core.calculator import GPUMemoryCalculator

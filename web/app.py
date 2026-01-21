@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 from starlette.requests import Request
 
+from gpu_mem_calculator.config.presets import load_presets, get_preset_config
 from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 from gpu_mem_calculator.core.models import (
     DType,
@@ -72,115 +73,23 @@ class PresetInfo(BaseModel):
     config: dict[str, Any]
 
 
-# Load preset configurations
-def load_presets() -> dict[str, PresetInfo]:
-    """Load preset model configurations."""
-    presets_dir = BASE_DIR / "presets"
-    presets = {}
-
-    # Default built-in presets
-    presets["llama2-7b"] = PresetInfo(
-        name="llama2-7b",
-        display_name="LLaMA 2 7B",
-        description="Meta LLaMA 2 7B model",
-        config={
-            "model": {
-                "name": "llama2-7b",
-                "num_parameters": "7B",
-                "num_layers": 32,
-                "hidden_size": 4096,
-                "num_attention_heads": 32,
-                "vocab_size": 32000,
-                "max_seq_len": 4096,
-            },
-            "training": {
-                "batch_size": 4,
-                "gradient_accumulation_steps": 4,
-                "optimizer": "adamw",
-                "dtype": "bf16",
-                "activation_checkpointing": 1,
-            },
-            "hardware": {
-                "num_gpus": 8,
-                "gpu_memory_gb": 80,
-            },
-        },
-    )
-
-    presets["llama2-13b"] = PresetInfo(
-        name="llama2-13b",
-        display_name="LLaMA 2 13B",
-        description="Meta LLaMA 2 13B model",
-        config={
-            "model": {
-                "name": "llama2-13b",
-                "num_parameters": "13B",
-                "num_layers": 40,
-                "hidden_size": 5120,
-                "num_attention_heads": 40,
-                "vocab_size": 32000,
-                "max_seq_len": 4096,
-            },
-            "training": {
-                "batch_size": 2,
-                "gradient_accumulation_steps": 8,
-                "optimizer": "adamw",
-                "dtype": "bf16",
-                "activation_checkpointing": 1,
-            },
-            "hardware": {
-                "num_gpus": 8,
-                "gpu_memory_gb": 80,
-            },
-        },
-    )
-
-    presets["llama2-70b"] = PresetInfo(
-        name="llama2-70b",
-        display_name="LLaMA 2 70B",
-        description="Meta LLaMA 2 70B model",
-        config={
-            "model": {
-                "name": "llama2-70b",
-                "num_parameters": "70B",
-                "num_layers": 80,
-                "hidden_size": 8192,
-                "num_attention_heads": 64,
-                "vocab_size": 32000,
-                "max_seq_len": 4096,
-            },
-            "training": {
-                "batch_size": 1,
-                "gradient_accumulation_steps": 16,
-                "optimizer": "adamw",
-                "dtype": "bf16",
-                "activation_checkpointing": 2,
-            },
-            "hardware": {
-                "num_gpus": 64,
-                "gpu_memory_gb": 80,
-            },
-        },
-    )
-
-    # Load additional presets from file if exists
-    presets_file = presets_dir / "models.json"
-    if presets_file.exists():
-        with presets_file.open("r") as f:
-            external_presets = json.load(f)
-            for name, preset in external_presets.items():
-                presets[name] = PresetInfo(
-                    name=name,
-                    display_name=preset.get("display_name", name),
-                    description=preset.get("description", ""),
-                    config=preset.get("config", {}),
-                )
-
-    return presets
+# Load presets at startup using shared preset loader
+# The shared loader reads from web/presets/models.json
+def _load_presets_from_shared() -> dict[str, PresetInfo]:
+    """Load presets using the shared preset loader."""
+    all_presets = load_presets()
+    return {
+        name: PresetInfo(
+            name=name,
+            display_name=preset.get("display_name", name),
+            description=preset.get("description", ""),
+            config=preset.get("config", {}),
+        )
+        for name, preset in all_presets.items()
+    }
 
 
-# Load presets at startup
-PRESETS = load_presets()
+PRESETS = _load_presets_from_shared()
 
 
 # API Routes

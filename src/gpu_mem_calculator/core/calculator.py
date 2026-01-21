@@ -4,7 +4,7 @@ Orchestrates the memory calculation by selecting the appropriate
 training engine and aggregating results.
 """
 
-from gpu_mem_calculator.config import ConfigParser
+from gpu_mem_calculator.config.parser import ConfigParser
 from gpu_mem_calculator.core.models import (
     EngineConfig,
     EngineType,
