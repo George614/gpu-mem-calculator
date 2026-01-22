@@ -1,2 +1,0 @@
-[console_scripts]
-gpu-mem-calc = gpu_mem_calculator.cli:main
