@@ -1,21 +1,46 @@
 # GPU Memory Calculator for LLM Training
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A versatile Python application for calculating GPU memory requirements for training Large Language Models with support for multiple training engines including PyTorch DDP, DeepSpeed ZeRO, Megatron-LM, and FSDP.
 
 <p align="center">
   <img src="screenshot.png" alt="GPU Memory Calculator Screenshot" width="800">
 </p>
 
-## Features
+## 🚀 Why Use This Tool?
 
-- **Multiple Training Engines**: Support for PyTorch DDP, DeepSpeed ZeRO (stages 1-3), Megatron-LM, Megatron+DeepSpeed, and PyTorch FSDP
-- **Dual Interface**: Both CLI and Web UI for flexible usage
-- **Preset Models**: Quick-load configurations for popular models (LLaMA 2, GPT-3, etc.)
-- **Detailed Breakdown**: Memory breakdown by component (parameters, gradients, optimizer states, activations)
-- **Feasibility Analysis**: Check if your configuration fits on available GPU memory
-- **Easy Config**: JSON-based configuration files with human-readable parameter formats
+Training large language models requires careful memory planning. This calculator helps you:
 
-## Installation
+- **💰 Save costs** by determining the optimal GPU configuration before you start training
+- **⚡ Avoid OOM errors** by validating your training configuration fits in GPU memory
+- **📊 Compare strategies** across different training engines (DeepSpeed, Megatron, FSDP)
+- **🎯 Plan infrastructure** by knowing exactly how many GPUs you need
+- **📈 Scale efficiently** with detailed memory breakdowns for optimization
+
+Whether you're training a 7B parameter model on a single GPU or a 175B model across hundreds of GPUs, this tool provides accurate memory estimates based on proven formulas from DeepSpeed, Megatron-LM, and the latest research.
+
+## ✨ Features
+
+- 🔧 **Multiple Training Engines**: Support for PyTorch DDP, DeepSpeed ZeRO (stages 1-3), Megatron-LM, Megatron+DeepSpeed, and PyTorch FSDP
+- 🖥️ **Dual Interface**: Both CLI and Web UI for flexible usage
+- 🎯 **Preset Models**: Quick-load configurations for popular models (LLaMA 2, GPT-3, etc.)
+- 📊 **Detailed Breakdown**: Memory breakdown by component (parameters, gradients, optimizer states, activations)
+- ✅ **Feasibility Analysis**: Check if your configuration fits on available GPU memory
+- ⚙️ **Easy Config**: JSON-based configuration files with human-readable parameter formats
+
+## 📦 Installation
+
+### Quick Start
+
+The fastest way to get started:
+
+```bash
+pip install git+https://github.com/George614/gpu-mem-calculator.git
+```
 
 ### From source
 
@@ -37,7 +62,24 @@ pip install -e ".[web]"
 pip install -e ".[dev]"
 ```
 
-## Usage
+## 🎓 Use Cases
+
+### Research & Academia
+- Estimate GPU requirements for research projects before requesting compute resources
+- Plan multi-GPU training configurations for large-scale experiments
+- Compare memory efficiency of different training strategies
+
+### Industry & Production
+- Cost optimization: Choose the right GPU type and count for your training workload
+- Capacity planning: Forecast infrastructure needs for model development
+- Debugging: Diagnose OOM errors and optimize memory usage
+
+### Education & Learning
+- Understand how training configuration affects memory consumption
+- Learn about different distributed training strategies
+- Experiment with various optimization techniques safely
+
+## 🚀 Usage
 
 ### Command Line Interface
 
@@ -305,11 +347,11 @@ ruff check src/ cli/ web/
 mypy src/
 ```
 
-## Contributing
+## 📝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-## References
+## 📚 References
 
 The memory calculations in this tool are based on authoritative sources:
 
@@ -328,11 +370,30 @@ The memory calculations in this tool are based on authoritative sources:
 - [llm-analysis](https://github.com/cli99/llm-analysis) - LLM memory analysis
 - [vram-calculator](https://github.com/furiousteabag/vram-calculator) - VRAM calculation utilities
 
-## License
+## 🤝 Community & Support
 
-MIT License
+- 📖 [Documentation](README.md)
+- 🐛 [Issue Tracker](https://github.com/George614/gpu-mem-calculator/issues)
+- 💬 [Discussions](https://github.com/George614/gpu-mem-calculator/discussions)
+- 📧 Contact the maintainers via GitHub
 
-## Acknowledgments
+### Star History
+
+If you find this tool useful, please consider giving it a star! ⭐
+
+## 📋 Roadmap
+
+Planned features and improvements:
+
+- [ ] PyPI package distribution
+- [ ] Support for more model architectures (Vision Transformers, Diffusion models)
+- [ ] Inference memory calculation
+- [ ] Multi-node training configurations
+- [ ] Integration with popular training frameworks
+- [ ] Real-time memory monitoring dashboard
+- [ ] Export to training configuration files
+
+## 🙏 Acknowledgments
 
 This tool was inspired by and builds upon the excellent work of:
 - [DeepSpeed Memory Estimator](https://deepspeed.readthedocs.io/en/latest/memory.html) - ZeRO memory optimization formulas
@@ -340,3 +401,33 @@ This tool was inspired by and builds upon the excellent work of:
 - [vram-calculator](https://github.com/furiousteabag/vram-calculator) - VRAM calculation approach
 
 Special thanks to the EleutherAI community for their comprehensive [Transformer Math 101](https://blog.eleuther.ai/transformer-math/) guide, which provides detailed formulas for transformer memory calculations.
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 📚 Citation
+
+If you use this tool in your research, please cite:
+
+```bibtex
+@software{gpu_mem_calculator,
+  title = {GPU Memory Calculator for LLM Training},
+  author = {GPU Mem Calculator Team},
+  year = {2024},
+  url = {https://github.com/George614/gpu-mem-calculator}
+}
+```
+
+---
+
+<p align="center">
+  Made with ❤️ for the ML community
+</p>
+
+<p align="center">
+  <a href="https://github.com/George614/gpu-mem-calculator/stargazers">⭐ Star us on GitHub</a> •
+  <a href="https://github.com/George614/gpu-mem-calculator/issues">🐛 Report a Bug</a> •
+  <a href="https://github.com/George614/gpu-mem-calculator/issues">💡 Request a Feature</a>
+</p>
+
