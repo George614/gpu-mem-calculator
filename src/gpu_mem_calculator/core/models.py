@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EngineType(str, Enum):
@@ -190,6 +190,8 @@ class GPUConfig(BaseModel):
 
 class MemoryBreakdown(BaseModel):
     """Memory calculation result breakdown."""
+
+    model_config = ConfigDict(protected_namespaces=())
 
     model_params_gb: float = Field(ge=0, description="Model parameters memory in GB")
     gradients_gb: float = Field(ge=0, description="Gradients memory in GB")

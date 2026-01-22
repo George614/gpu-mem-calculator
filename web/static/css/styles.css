@@ -399,3 +399,88 @@ header h1 {
     z-index: 100;
     margin-bottom: 5px;
 }
+
+/* Formula Explanation Section */
+.formula-description {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.formula-description p {
+    margin-bottom: 8px;
+}
+
+.formula-components-list {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0;
+}
+
+.formula-components-list li {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.component-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    font-size: 1rem;
+}
+
+.component-formula {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--border-color);
+    padding: 8px;
+    border-radius: 4px;
+    margin: 8px 0;
+    font-size: 0.9rem;
+    overflow-x: auto;
+}
+
+.component-calculation {
+    margin: 6px 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.component-result {
+    margin-top: 6px;
+    font-size: 0.95rem;
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.formula-references {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.formula-references h4 {
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.formula-references ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.formula-references li {
+    margin-bottom: 8px;
+}
+
+.formula-references a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.formula-references a:hover {
+    text-decoration: underline;
+}

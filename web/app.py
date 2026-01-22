@@ -538,6 +538,294 @@ async def validate_config(request: CalculateRequest) -> dict[str, Any]:
         return {"valid": False, "errors": [str(e)]}
 
 
+@app.post("/api/explain-formula")
+async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
+    """Explain the memory formula used for calculation.
+
+    Returns detailed information about which formula is being used,
+    with the user's values plugged in, and links to documentation.
+
+    Args:
+        request: Calculation request with model, training, and hardware configs
+
+    Returns:
+        Formula explanation with formula type, breakdown, and references
+    """
+    try:
+        # Get configuration details
+        engine_type = request.engine.get('type', 'pytorch_ddp') if request.engine else 'pytorch_ddp'
+        num_params = request.model.get('num_parameters', 0)
+
+        # Parse num_parameters if it's a string (e.g., "7B", "7000M")
+        if isinstance(num_params, str):
+            from gpu_mem_calculator.config.parser import ConfigParser
+            num_params = ConfigParser._parse_num_params(num_params)
+
+        dtype = request.training.get('dtype', 'bf16')
+        optimizer = request.training.get('optimizer', 'adamw')
+        num_gpus = request.hardware.get('num_gpus', 1) if request.hardware else 1
+        batch_size = request.training.get('batch_size', 1)
+
+        # Calculate memory to get the breakdown
+        result = await calculate_memory(request)
+
+        # Determine formula description based on engine type
+        formula_info = {
+            "engine_type": engine_type,
+            "engine_name": _get_engine_name(engine_type),
+            "formula_components": [],
+            "total_memory_gb": round(result.total_memory_per_gpu_gb, 2),
+            "breakdown": {
+                "model_params_gb": round(result.breakdown.model_params_gb, 2),
+                "gradients_gb": round(result.breakdown.gradients_gb, 2),
+                "optimizer_states_gb": round(result.breakdown.optimizer_states_gb, 2),
+                "activations_gb": round(result.breakdown.activations_gb, 2),
+                "overhead_gb": round(result.breakdown.overhead_gb, 2),
+            },
+            "references": _get_formula_references(engine_type),
+        }
+
+        # Add engine-specific formula details
+        if engine_type == 'pytorch_ddp':
+            formula_info["formula_description"] = (
+                "PyTorch DDP stores complete copies of model parameters, gradients, "
+                "and optimizer states on each GPU."
+            )
+            formula_info["formula_components"] = [
+                {
+                    "name": "Model Parameters",
+                    "formula": f"{num_params:,} × 2 bytes (FP16/BF16)",
+                    "result": f"{result.breakdown.model_params_gb:.2f} GB",
+                    "description": "Full model stored on each GPU"
+                },
+                {
+                    "name": "Gradients",
+                    "formula": f"{num_params:,} × 2 bytes (FP16)",
+                    "result": f"{result.breakdown.gradients_gb:.2f} GB",
+                    "description": "Full gradients during backward pass"
+                },
+                {
+                    "name": "Optimizer States",
+                    "formula": _get_optimizer_formula(optimizer, num_params)["formula"],
+                    "result": f"{result.breakdown.optimizer_states_gb:.2f} GB",
+                    "description": _get_optimizer_formula(optimizer, num_params)["description"]
+                },
+            ]
+
+        elif engine_type in ['deepspeed', 'megatron_deepspeed']:
+            zero_stage = request.engine.get('zero_stage', 0) if request.engine else 0
+            offload_optimizer = request.engine.get('offload_optimizer', 'none') if request.engine else 'none'
+            offload_param = request.engine.get('offload_param', 'none') if request.engine else 'none'
+
+            if zero_stage == 0:
+                stage_name = "ZeRO-0 (Baseline)"
+                formula_info["formula_description"] = (
+                    f"{stage_name}: No memory optimization. Same as PyTorch DDP."
+                )
+            elif zero_stage == 1:
+                stage_name = "ZeRO-1"
+                formula_info["formula_description"] = (
+                    f"{stage_name}: Shards optimizer states across {num_gpus} GPUs. "
+                    f"Reduces optimizer memory by {num_gpus}x."
+                )
+            elif zero_stage == 2:
+                stage_name = "ZeRO-2"
+                formula_info["formula_description"] = (
+                    f"{stage_name}: Shards optimizer states AND gradients across {num_gpus} GPUs. "
+                    f"Reduces memory by {num_gpus}x for both components."
+                )
+            elif zero_stage == 3:
+                stage_name = "ZeRO-3"
+                formula_info["formula_description"] = (
+                    f"{stage_name}: Shards parameters, gradients, AND optimizer states. "
+                    f"Only largest layer stored intact. Linear memory reduction with GPU count."
+                )
+
+            formula_info["zero_stage"] = zero_stage
+            formula_info["offload_optimizer"] = offload_optimizer
+            formula_info["offload_param"] = offload_param
+
+            # Add ZeRO-specific components
+            if zero_stage == 3:
+                # Estimate largest layer (approx 10% of params for typical models)
+                largest_params = num_params // 10
+                formula_info["formula_components"] = [
+                    {
+                        "name": "Largest Layer",
+                        "formula": f"{largest_params:,} × 4 bytes (FP16 params + grads)",
+                        "result": f"{result.breakdown.model_params_gb:.2f} GB",
+                        "description": "Gathered during compute, largest layer kept intact"
+                    },
+                    {
+                        "name": "Sharded Parameters",
+                        "formula": f"({num_params:,} × 2 bytes) / {num_gpus} GPUs",
+                        "result": "Included in model params",
+                        "description": "Remaining parameters sharded across GPUs"
+                    },
+                    {
+                        "name": "Sharded Optimizer States",
+                        "formula": f"({_get_optimizer_formula(optimizer, num_params)['formula']}) / {num_gpus} GPUs" if offload_optimizer == 'none' else f"Offloaded to {offload_optimizer}",
+                        "result": f"{result.breakdown.optimizer_states_gb:.2f} GB",
+                        "description": _get_optimizer_formula(optimizer, num_params)["description"] + " (sharded or offloaded)"
+                    },
+                ]
+            else:
+                # ZeRO-1 or ZeRO-2
+                formula_info["formula_components"] = [
+                    {
+                        "name": "Model Parameters",
+                        "formula": f"{num_params:,} × 2 bytes (FP16)",
+                        "result": f"{result.breakdown.model_params_gb:.2f} GB",
+                        "description": "Full model on each GPU"
+                    },
+                    {
+                        "name": "Gradients",
+                        "formula": f"{num_params:,} × 2 bytes" if zero_stage < 2 else f"({num_params:,} × 2 bytes) / {num_gpus} GPUs",
+                        "result": f"{result.breakdown.gradients_gb:.2f} GB",
+                        "description": "Sharded across GPUs" if zero_stage >= 2 else "Full gradients"
+                    },
+                    {
+                        "name": "Optimizer States",
+                        "formula": f"({_get_optimizer_formula(optimizer, num_params)['formula']}) / {num_gpus} GPUs" if offload_optimizer == 'none' else f"Offloaded to {offload_optimizer}",
+                        "result": f"{result.breakdown.optimizer_states_gb:.2f} GB",
+                        "description": _get_optimizer_formula(optimizer, num_params)["description"] + " (sharded or offloaded)"
+                    },
+                ]
+
+        elif engine_type == 'fsdp':
+            sharding_strategy = request.engine.get('sharding_strategy', 'full_shard') if request.engine else 'full_shard'
+
+            if sharding_strategy == 'no_shard':
+                strategy_name = "No Sharding (like DDP)"
+            elif sharding_strategy == 'shard_grad_op':
+                strategy_name = "Shard Gradients + Optimizer (like ZeRO-2)"
+            else:
+                strategy_name = "Full Shard (like ZeRO-3)"
+
+            formula_info["sharding_strategy"] = sharding_strategy
+            formula_info["strategy_name"] = strategy_name
+            formula_info["formula_description"] = f"FSDP with {strategy_name.lower()} strategy."
+
+        elif engine_type == 'megatron_lm':
+            formula_info["formula_description"] = (
+                "Megatron-LM uses tensor and/or pipeline parallelism to "
+                "split the model across GPUs, reducing memory per GPU."
+            )
+
+            # Add parallelism info
+            if request.parallelism:
+                tp_size = request.parallelism.get('tensor_parallel_size', 1)
+                pp_size = request.parallelism.get('pipeline_parallel_size', 1)
+                formula_info["parallelism"] = {
+                    "tensor_parallel_size": tp_size,
+                    "pipeline_parallel_size": pp_size,
+                }
+
+        # Add activation memory explanation
+        formula_info["formula_components"].append({
+            "name": "Activations",
+            "formula": (
+                f"batch_size({batch_size}) × seq_len × hidden_size × "
+                f"layers × ~16 bytes/token/layer"
+            ),
+            "result": f"{result.breakdown.activations_gb:.2f} GB",
+            "description": "Memory from intermediate activations during forward/backward pass"
+        })
+
+        return formula_info
+
+    except Exception as e:
+        logger.error(f"Formula explanation error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate formula explanation: {str(e)}"
+        ) from e
+
+
+def _get_engine_name(engine_type: str) -> str:
+    """Get human-readable engine name."""
+    names = {
+        "pytorch_ddp": "PyTorch DDP (Distributed Data Parallel)",
+        "deepspeed": "DeepSpeed ZeRO",
+        "megatron_lm": "Megatron-LM",
+        "fsdp": "PyTorch FSDP (Fully Sharded Data Parallel)",
+        "megatron_deepspeed": "Megatron-LM + DeepSpeed",
+    }
+    return names.get(engine_type, engine_type)
+
+
+def _get_optimizer_formula(optimizer: str, num_params: int) -> dict[str, str]:
+    """Get optimizer memory formula based on optimizer type.
+
+    Args:
+        optimizer: Optimizer type (adam, adamw, sgd, adamw_8bit)
+        num_params: Number of model parameters
+
+    Returns:
+        Dictionary with 'formula' and 'description' keys
+    """
+    num_params_formatted = f"{num_params:,}"
+
+    if optimizer in ['adam', 'adamw']:
+        return {
+            "formula": f"{num_params_formatted} × 12 bytes (Adam/AdamW FP32)",
+            "description": "4 bytes FP32 params + 4 bytes momentum + 4 bytes variance"
+        }
+    elif optimizer == 'adamw_8bit':
+        return {
+            "formula": f"{num_params_formatted} × 2 bytes (AdamW 8-bit)",
+            "description": "8-bit quantized optimizer states (2 bytes per parameter)"
+        }
+    elif optimizer == 'sgd':
+        return {
+            "formula": f"{num_params_formatted} × 4 bytes (SGD)",
+            "description": "4 bytes FP32 params (no momentum for SGD)"
+        }
+    else:
+        # Default to AdamW
+        return {
+            "formula": f"{num_params_formatted} × 12 bytes (Adam/AdamW FP32)",
+            "description": "4 bytes FP32 params + 4 bytes momentum + 4 bytes variance"
+        }
+
+
+def _get_formula_references(engine_type: str) -> list[dict[str, str]]:
+    """Get authoritative references for the formula."""
+    references = [
+        {
+            "title": "EleutherAI Transformer Math 101",
+            "url": "https://blog.eleuther.ai/transformer-math/",
+            "description": "Comprehensive transformer memory breakdown with formulas"
+        },
+        {
+            "title": "Microsoft Research ZeRO Blog",
+            "url": "https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/",
+            "description": "ZeRO optimization techniques and memory formulas"
+        },
+    ]
+
+    if engine_type in ['deepspeed', 'megatron_deepspeed']:
+        references.append({
+            "title": "DeepSpeed Memory Documentation",
+            "url": "https://deepspeed.readthedocs.io/en/latest/memory.html",
+            "description": "Official DeepSpeed memory requirements and formulas"
+        })
+    elif engine_type == 'megatron_lm' or engine_type == 'megatron_deepspeed':
+        references.append({
+            "title": "NVIDIA Megatron-LM",
+            "url": "https://github.com/NVIDIA/Megatron-LM",
+            "description": "Megatron-LM tensor and pipeline parallelism"
+        })
+    elif engine_type == 'fsdp':
+        references.append({
+            "title": "PyTorch FSDP Documentation",
+            "url": "https://pytorch.org/docs/stable/fsdp.html",
+            "description": "PyTorch Fully Sharded Data Parallel documentation"
+        })
+
+    return references
+
+
 def main() -> None:
     """Run the development server."""
     import uvicorn

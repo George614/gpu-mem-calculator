@@ -91,9 +91,17 @@ class GPUMemCalculator {
             this.copyConfigJSON();
         });
 
+        // Show formula details button
+        document.getElementById('show-formula-btn').addEventListener('click', () => {
+            this.showFormulaExplanation();
+        });
+
         // Initialize engine fields
         this.updateEngineFields('deepspeed');
         this.updateEffectiveGPUs();
+
+        // Store last config for formula explanation
+        this.lastConfig = null;
     }
 
     initAutoCalculate() {
@@ -562,6 +570,7 @@ class GPUMemCalculator {
         }
 
         const config = this.collectFormData();
+        this.lastConfig = config; // Store for formula explanation
         const calculateBtn = document.getElementById('calculate-btn');
 
         // Update last calculation time
@@ -656,6 +665,91 @@ class GPUMemCalculator {
         document.getElementById('bar-grads').style.width = `${gradsPct}%`;
         document.getElementById('bar-optimizer').style.width = `${optimizerPct}%`;
         document.getElementById('bar-activations').style.width = `${activationsPct}%`;
+    }
+
+    async showFormulaExplanation() {
+        if (!this.lastConfig) {
+            this.showError('Please run a calculation first to see the formula explanation.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.apiBase}/explain-formula`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(this.lastConfig),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get formula explanation');
+            }
+
+            const formulaInfo = await response.json();
+            this.displayFormulaExplanation(formulaInfo);
+        } catch (error) {
+            this.showError(`Failed to load formula explanation: ${error.message}`);
+        }
+    }
+
+    displayFormulaExplanation(formulaInfo) {
+        // Update formula description
+        const descEl = document.getElementById('formula-description');
+        descEl.innerHTML = `
+            <p><strong>Engine:</strong> ${formulaInfo.engine_name}</p>
+            <p><strong>Total Memory:</strong> ${formulaInfo.total_memory_gb} GB</p>
+            <p>${formulaInfo.formula_description || ''}</p>
+        `;
+
+        // Update formula components
+        const componentsEl = document.getElementById('formula-components');
+        componentsEl.style.display = 'block';
+
+        let componentsHTML = '<h4>Formula Components:</h4><ul class="formula-components-list">';
+        formulaInfo.formula_components.forEach(component => {
+            componentsHTML += `
+                <li>
+                    <div class="component-name">${component.name}</div>
+                    ${component.formula ? `<div class="component-formula">${component.formula}</div>` : ''}
+                    ${component.description ? `<div class="component-calculation">${component.description}</div>` : ''}
+                    <div class="component-result">
+                        <strong>Result:</strong> ${component.result}
+                    </div>
+                </li>
+            `;
+        });
+        componentsHTML += '</ul>';
+        componentsEl.innerHTML = componentsHTML;
+
+        // Update references
+        const refsEl = document.getElementById('references-list');
+        const refsContainer = document.querySelector('.formula-references');
+        refsContainer.style.display = 'block';
+
+        let refsHTML = '';
+        formulaInfo.references.forEach(ref => {
+            refsHTML += `<li><a href="${ref.url}" target="_blank" rel="noopener noreferrer">${ref.title}</a></li>`;
+        });
+        refsEl.innerHTML = refsHTML;
+
+        // Update button text
+        const btn = document.getElementById('show-formula-btn');
+        btn.textContent = 'Hide Formula Details';
+        btn.onclick = () => {
+            this.hideFormulaExplanation();
+        };
+    }
+
+    hideFormulaExplanation() {
+        document.getElementById('formula-components').style.display = 'none';
+        document.querySelector('.formula-references').style.display = 'none';
+
+        const btn = document.getElementById('show-formula-btn');
+        btn.textContent = 'Show Formula Details';
+        btn.onclick = () => {
+            this.showFormulaExplanation();
+        };
     }
 
     resetForm() {
