@@ -5,10 +5,14 @@ class GPUMemCalculator {
         this.apiBase = '/api';
         this.autoCalculateEnabled = true;
         this.debounceTimer = null;
-        this.debounceDelay = 500; // ms
+        this.debounceDelay = 1000; // ms - increased from 500 to reduce API calls
         this.isApplyingConfig = false; // Flag to prevent auto-calc during preset loads
+        this.lastCalculationTime = 0; // Prevent too frequent calculations
+        this.minCalculationInterval = 500; // Minimum time between calculations (ms)
+        this.savedConfigs = []; // For comparison mode
         this.initEventListeners();
         this.initAutoCalculate();
+        this.loadSavedConfigs();
     }
 
     initEventListeners() {
@@ -138,6 +142,12 @@ class GPUMemCalculator {
         // Don't auto-calculate if disabled
         if (!this.autoCalculateEnabled) return;
 
+        // Check minimum time between calculations
+        const now = Date.now();
+        if (now - this.lastCalculationTime < this.minCalculationInterval) {
+            return; // Skip this calculation, too soon
+        }
+
         // Clear existing timer
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
@@ -147,6 +157,150 @@ class GPUMemCalculator {
         this.debounceTimer = setTimeout(() => {
             this.calculateMemory();
         }, this.debounceDelay);
+    }
+
+    /**
+     * Client-side validation before making API call
+     * Returns {valid: boolean, errors: string[]}
+     */
+    validateForm() {
+        const errors = [];
+
+        // Get form values
+        const tensorPP = parseInt(document.getElementById('tensor-pp').value) || 1;
+        const pipelinePP = parseInt(document.getElementById('pipeline-pp').value) || 1;
+        const dataPP = parseInt(document.getElementById('data-pp').value) || 1;
+        const numGPUs = parseInt(document.getElementById('num-gpus').value) || 1;
+        const seqParallel = document.getElementById('seq-parallel').checked;
+        const engineType = document.getElementById('engine-type').value;
+        const zeroStage = parseInt(document.getElementById('zero-stage').value) || 0;
+        const moeEnabled = document.getElementById('moe-enabled').checked;
+        const numExperts = parseInt(document.getElementById('num-experts').value) || 1;
+        const topK = parseInt(document.getElementById('top-k').value) || 1;
+
+        // Validate parallelism consistency
+        const effectiveGPUs = tensorPP * pipelinePP * dataPP;
+        if (effectiveGPUs !== numGPUs) {
+            errors.push(
+                `Parallelism mismatch: ${tensorPP}×${pipelinePP}×${dataPP}=${effectiveGPUs} GPUs, ` +
+                `but num_gpus=${numGPUs}. These must match.`
+            );
+        }
+
+        // Validate sequence parallel requires tensor parallel > 1
+        if (seqParallel && tensorPP <= 1) {
+            errors.push(
+                'Sequence parallelism requires tensor_parallel_size > 1, ' +
+                `but tensor_pp=${tensorPP}.`
+            );
+        }
+
+        // Validate ZeRO stages only for DeepSpeed engines
+        if (zeroStage > 0 && !['deepspeed', 'megatron_deepspeed'].includes(engineType)) {
+            errors.push(
+                `ZeRO stages are only supported for DeepSpeed engines, ` +
+                `but engine_type='${engineType}' with zero_stage=${zeroStage}.`
+            );
+        }
+
+        // Validate MoE settings
+        if (moeEnabled) {
+            if (topK > numExperts) {
+                errors.push(
+                    `MoE top_k (${topK}) cannot exceed num_experts (${numExperts}).`
+                );
+            }
+            if (numExperts < 1 || numExperts > 256) {
+                errors.push(`num_experts must be between 1 and 256, got ${numExperts}.`);
+            }
+            if (topK < 1 || topK > 8) {
+                errors.push(`top_k must be between 1 and 8, got ${topK}.`);
+            }
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors: errors
+        };
+    }
+
+    /**
+     * Load saved configs from localStorage
+     */
+    loadSavedConfigs() {
+        try {
+            const saved = localStorage.getItem('gpu-mem-saved-configs');
+            if (saved) {
+                this.savedConfigs = JSON.parse(saved);
+            }
+        } catch (e) {
+            console.warn('Failed to load saved configs:', e);
+            this.savedConfigs = [];
+        }
+    }
+
+    /**
+     * Save current config for comparison
+     */
+    saveConfigForComparison() {
+        const config = this.collectFormData();
+        const name = config.model.name || 'unnamed';
+
+        // Add timestamp
+        config.savedAt = new Date().toISOString();
+        config.id = Date.now();
+
+        this.savedConfigs.push(config);
+
+        // Limit to 10 saved configs
+        if (this.savedConfigs.length > 10) {
+            this.savedConfigs.shift();
+        }
+
+        // Save to localStorage
+        try {
+            localStorage.setItem('gpu-mem-saved-configs', JSON.stringify(this.savedConfigs));
+            this.showError(`Saved config: ${name}`, true);
+        } catch (e) {
+            this.showError('Failed to save config');
+        }
+    }
+
+    /**
+     * Show comparison modal/panel
+     */
+    showComparison(configId) {
+        const config = this.savedConfigs.find(c => c.id === configId);
+        if (!config) return;
+
+        const currentConfig = this.collectFormData();
+
+        // Create comparison HTML
+        const comparisonHTML = this.generateComparisonHTML(currentConfig, config);
+
+        // Show in modal (you'll need to add modal HTML to index.html)
+        alert('Comparison feature - modal will be added');
+    }
+
+    /**
+     * Generate HTML for comparison view
+     */
+    generateComparisonHTML(config1, config2) {
+        // Calculate memory for both configs
+        // For now, just return placeholder
+        return `
+            <h3>Configuration Comparison</h3>
+            <div class="comparison-container">
+                <div class="config-column">
+                    <h4>Current Config</h4>
+                    <pre>${JSON.stringify(config1, null, 2)}</pre>
+                </div>
+                <div class="config-column">
+                    <h4>Saved Config</h4>
+                    <pre>${JSON.stringify(config2, null, 2)}</pre>
+                </div>
+            </div>
+        `;
     }
 
     setAutoCalculate(enabled) {
@@ -399,8 +553,19 @@ class GPUMemCalculator {
     }
 
     async calculateMemory() {
+        // Client-side validation first
+        const validation = this.validateForm();
+        if (!validation.valid) {
+            // Show validation errors inline
+            this.showError(`Validation error: ${validation.errors[0]}`);
+            return;
+        }
+
         const config = this.collectFormData();
         const calculateBtn = document.getElementById('calculate-btn');
+
+        // Update last calculation time
+        this.lastCalculationTime = Date.now();
 
         // Show loading state
         calculateBtn.disabled = true;
@@ -417,7 +582,8 @@ class GPUMemCalculator {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.detail || 'Calculation failed');
+                const errorMsg = error.detail?.message || error.detail || 'Calculation failed';
+                throw new Error(errorMsg);
             }
 
             const result = await response.json();

@@ -249,6 +249,55 @@ header h1 {
 .bar {
     height: 100%;
     transition: width 0.3s ease;
+    position: relative;
+}
+
+/* Add patterns to bars for colorblind accessibility */
+#bar-params {
+    background-color: #3b82f6;
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(255, 255, 255, 0.1) 5px,
+        rgba(255, 255, 255, 0.1) 10px
+    );
+}
+
+#bar-grads {
+    background-color: #8b5cf6;
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(255, 255, 255, 0.1) 5px,
+        rgba(255, 255, 255, 0.1) 10px
+    );
+    /* Different pattern: dots */
+    background-image: radial-gradient(circle, rgba(255,255,255,0.2) 1px, transparent 1px);
+    background-size: 8px 8px;
+}
+
+#bar-optimizer {
+    background-color: #ec4899;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 5px,
+        rgba(255, 255, 255, 0.15) 5px,
+        rgba(255, 255, 255, 0.15) 10px
+    );
+}
+
+#bar-activations {
+    background-color: #10b981;
+    background-image: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 5px,
+        rgba(255, 255, 255, 0.1) 5px,
+        rgba(255, 255, 255, 0.1) 10px
+    );
 }
 
 .bar:first-child {
@@ -289,6 +338,19 @@ header h1 {
 #bar-grads { background-color: #8b5cf6; }
 #bar-optimizer { background-color: #ec4899; }
 #bar-activations { background-color: #10b981; }
+
+/* Screen reader only class */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
 
 /* Status colors */
 .status-success { color: var(--success-color); }

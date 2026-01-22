@@ -44,38 +44,39 @@
 
                     <div class="form-grid">
                         <div class="form-group" data-tooltip="Name of your model">
-                            <label for="model-name">Model Name:</label>
-                            <input type="text" id="model-name" value="custom-model">
+                            <label for="model-name" id="label-model-name">Model Name:</label>
+                            <input type="text" id="model-name" value="custom-model" aria-labelledby="label-model-name">
                         </div>
 
                         <div class="form-group" data-tooltip="Total number of parameters (e.g., 7B, 7000M, 7000000000)">
-                            <label for="num-params">Parameters:</label>
-                            <input type="text" id="num-params" value="7B" placeholder="e.g., 7B">
+                            <label for="num-params" id="label-num-params">Parameters:</label>
+                            <input type="text" id="num-params" value="7B" placeholder="e.g., 7B" aria-labelledby="label-num-params" aria-describedby="help-num-params">
+                            <span id="help-num-params" class="sr-only">Enter model size as number with optional suffix: 7B, 7000M, or 7000000000</span>
                         </div>
 
                         <div class="form-group" data-tooltip="Number of transformer layers">
-                            <label for="num-layers">Layers:</label>
-                            <input type="number" id="num-layers" value="32" min="1">
+                            <label for="num-layers" id="label-num-layers">Layers:</label>
+                            <input type="number" id="num-layers" value="32" min="1" aria-labelledby="label-num-layers">
                         </div>
 
                         <div class="form-group" data-tooltip="Hidden dimension size">
-                            <label for="hidden-size">Hidden Size:</label>
-                            <input type="number" id="hidden-size" value="4096" min="1">
+                            <label for="hidden-size" id="label-hidden-size">Hidden Size:</label>
+                            <input type="number" id="hidden-size" value="4096" min="1" aria-labelledby="label-hidden-size">
                         </div>
 
                         <div class="form-group" data-tooltip="Number of attention heads">
-                            <label for="num-heads">Attention Heads:</label>
-                            <input type="number" id="num-heads" value="32" min="1">
+                            <label for="num-heads" id="label-num-heads">Attention Heads:</label>
+                            <input type="number" id="num-heads" value="32" min="1" aria-labelledby="label-num-heads">
                         </div>
 
                         <div class="form-group" data-tooltip="Vocabulary size">
-                            <label for="vocab-size">Vocab Size:</label>
-                            <input type="number" id="vocab-size" value="32000" min="1">
+                            <label for="vocab-size" id="label-vocab-size">Vocab Size:</label>
+                            <input type="number" id="vocab-size" value="32000" min="1" aria-labelledby="label-vocab-size">
                         </div>
 
                         <div class="form-group" data-tooltip="Maximum sequence length">
-                            <label for="seq-len">Max Seq Length:</label>
-                            <input type="number" id="seq-len" value="4096" min="1">
+                            <label for="seq-len" id="label-seq-len">Max Seq Length:</label>
+                            <input type="number" id="seq-len" value="4096" min="1" aria-labelledby="label-seq-len">
                         </div>
                     </div>
                 </section>
