@@ -391,7 +391,7 @@ mypy src/
 
 ## Recent Improvements
 
-### v1.1.0 - Formula Explanation & Accessibility
+### Latest Updates
 - ✨ Added formula explanation feature with detailed breakdowns
 - ✨ Added client-side validation for better UX
 - ✨ Added batch size optimizer API
