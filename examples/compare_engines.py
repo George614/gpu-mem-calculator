@@ -20,11 +20,11 @@ def calculate_for_engine(engine_type, zero_stage=None):
     
     # Same model configuration for all engines
     model_config = ModelConfig(
-        name="llama2-13b",
-        num_parameters=13_000_000_000,
-        num_layers=40,
-        hidden_size=5120,
-        num_attention_heads=40,
+        name="llama2-7b",
+        num_parameters=7_000_000_000,
+        num_layers=32,
+        hidden_size=4096,
+        num_attention_heads=32,
         vocab_size=32000,
         max_seq_len=4096,
     )
@@ -46,20 +46,20 @@ def calculate_for_engine(engine_type, zero_stage=None):
             type="deepspeed",
             zero_stage=zero_stage,
         )
-    elif engine_type == "megatron":
+    elif engine_type == "megatron_lm":
         engine_config = EngineConfig(
-            type="megatron",
+            type="megatron_lm",
         )
         parallelism_config.tensor_parallel_size = 2
         parallelism_config.pipeline_parallel_size = 1
     elif engine_type == "fsdp":
         engine_config = EngineConfig(
             type="fsdp",
-            sharding_strategy="FULL_SHARD",
+            sharding_strategy="full_shard",
         )
-    else:  # pytorch (DDP)
+    else:  # pytorch_ddp (DDP)
         engine_config = EngineConfig(
-            type="pytorch",
+            type="pytorch_ddp",
         )
     
     gpu_config = GPUConfig(
@@ -82,19 +82,19 @@ def main():
     """Compare different training engines"""
     
     print("=" * 70)
-    print("Comparing Training Engines for LLaMA 2 13B")
+    print("Comparing Training Engines for LLaMA 2 7B")
     print("Hardware: 8× A100 80GB GPUs")
     print("=" * 70)
     print()
     
     # Test different configurations
     configs = [
-        ("PyTorch DDP", "pytorch", None),
+        ("PyTorch DDP", "pytorch_ddp", None),
         ("DeepSpeed ZeRO-1", "deepspeed", 1),
         ("DeepSpeed ZeRO-2", "deepspeed", 2),
         ("DeepSpeed ZeRO-3", "deepspeed", 3),
         ("FSDP", "fsdp", None),
-        ("Megatron-LM", "megatron", None),
+        ("Megatron-LM", "megatron_lm", None),
     ]
     
     results = []

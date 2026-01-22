@@ -81,10 +81,10 @@ def main():
     print(f"GPU Utilization: {result.memory_utilization_percent:.1f}%")
     print("=" * 60)
     print("\nMemory Breakdown:")
-    print(f"  Parameters: {result.model_memory_gb:.2f} GB")
-    print(f"  Gradients: {result.gradient_memory_gb:.2f} GB")
-    print(f"  Optimizer States: {result.optimizer_memory_gb:.2f} GB")
-    print(f"  Activations: {result.activation_memory_gb:.2f} GB")
+    print(f"  Parameters: {result.breakdown.model_params_gb:.2f} GB")
+    print(f"  Gradients: {result.breakdown.gradients_gb:.2f} GB")
+    print(f"  Optimizer States: {result.breakdown.optimizer_states_gb:.2f} GB")
+    print(f"  Activations: {result.breakdown.activations_gb:.2f} GB")
     print("=" * 60)
     
     # Recommendations

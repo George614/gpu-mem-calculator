@@ -1,3 +1,4 @@
+LICENSE
 README.md
 pyproject.toml
 src/gpu_mem_calculator/__init__.py
@@ -7,8 +8,11 @@ src/gpu_mem_calculator.egg-info/dependency_links.txt
 src/gpu_mem_calculator.egg-info/entry_points.txt
 src/gpu_mem_calculator.egg-info/requires.txt
 src/gpu_mem_calculator.egg-info/top_level.txt
+src/gpu_mem_calculator/cli/__init__.py
+src/gpu_mem_calculator/cli/main.py
 src/gpu_mem_calculator/config/__init__.py
 src/gpu_mem_calculator/config/parser.py
+src/gpu_mem_calculator/config/presets.py
 src/gpu_mem_calculator/core/__init__.py
 src/gpu_mem_calculator/core/calculator.py
 src/gpu_mem_calculator/core/formulas.py
@@ -22,3 +26,4 @@ src/gpu_mem_calculator/engines/pytorch.py
 src/gpu_mem_calculator/utils/__init__.py
 src/gpu_mem_calculator/utils/precision.py
 tests/test_calculator.py
+tests/test_comprehensive.py
