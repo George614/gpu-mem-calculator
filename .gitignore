@@ -24,6 +24,7 @@ wheels/
 .installed.cfg
 *.egg
 
+
 # PyInstaller
 *.manifest
 *.spec
@@ -39,6 +40,13 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.pytest_cache/
+
+# Claude
+.claude/
 
 # Virtual environments
 venv/
