@@ -74,8 +74,9 @@ class TestTrainingEngines:
         """Base GPU config for testing."""
         return GPUConfig(num_gpus=8, gpu_memory_gb=80)
 
-    def test_pytorch_ddp(self, base_model_config, base_training_config,
-                         base_parallelism_config, base_gpu_config):
+    def test_pytorch_ddp(
+        self, base_model_config, base_training_config, base_parallelism_config, base_gpu_config
+    ):
         """Test PyTorch DDP engine."""
         engine_config = EngineConfig(type=EngineType.PYTORCH_DDP)
 
@@ -97,8 +98,9 @@ class TestTrainingEngines:
         # In DDP, model params + gradients + optimizer should be similar magnitude
         assert result.breakdown.model_params_gb > 1.0  # 7B params in BF16
 
-    def test_deepspeed_zero1(self, base_model_config, base_training_config,
-                            base_parallelism_config, base_gpu_config):
+    def test_deepspeed_zero1(
+        self, base_model_config, base_training_config, base_parallelism_config, base_gpu_config
+    ):
         """Test DeepSpeed ZeRO-1 (optimizer state sharding)."""
         engine_config = EngineConfig(
             type=EngineType.DEEPSPEED,
@@ -119,8 +121,9 @@ class TestTrainingEngines:
         # ZeRO-1 shards optimizer states
         assert result.breakdown.optimizer_states_gb >= 0
 
-    def test_deepspeed_zero2(self, base_model_config, base_training_config,
-                            base_parallelism_config, base_gpu_config):
+    def test_deepspeed_zero2(
+        self, base_model_config, base_training_config, base_parallelism_config, base_gpu_config
+    ):
         """Test DeepSpeed ZeRO-2 (optimizer + gradient sharding)."""
         engine_config = EngineConfig(
             type=EngineType.DEEPSPEED,
@@ -142,8 +145,9 @@ class TestTrainingEngines:
         assert result.breakdown.optimizer_states_gb >= 0
         assert result.breakdown.gradients_gb >= 0
 
-    def test_deepspeed_zero3(self, base_model_config, base_training_config,
-                            base_parallelism_config, base_gpu_config):
+    def test_deepspeed_zero3(
+        self, base_model_config, base_training_config, base_parallelism_config, base_gpu_config
+    ):
         """Test DeepSpeed ZeRO-3 (full sharding)."""
         engine_config = EngineConfig(
             type=EngineType.DEEPSPEED,
@@ -165,8 +169,9 @@ class TestTrainingEngines:
         # Only largest layer should be stored per GPU
         assert result.breakdown.model_params_gb > 0
 
-    def test_deepspeed_zero3_cpu_offload(self, base_model_config, base_training_config,
-                                        base_parallelism_config, base_gpu_config):
+    def test_deepspeed_zero3_cpu_offload(
+        self, base_model_config, base_training_config, base_parallelism_config, base_gpu_config
+    ):
         """Test DeepSpeed ZeRO-3 with CPU optimizer offloading."""
         engine_config = EngineConfig(
             type=EngineType.DEEPSPEED,
@@ -189,8 +194,9 @@ class TestTrainingEngines:
         assert result.total_memory_per_gpu_gb > 0
         assert result.cpu_memory_gb > 0
 
-    def test_megatron_lm(self, base_model_config, base_training_config,
-                        base_parallelism_config, base_gpu_config):
+    def test_megatron_lm(
+        self, base_model_config, base_training_config, base_parallelism_config, base_gpu_config
+    ):
         """Test Megatron-LM with tensor parallelism."""
         engine_config = EngineConfig(type=EngineType.MEGATRON_LM)
 
@@ -213,8 +219,9 @@ class TestTrainingEngines:
 
         assert result.total_memory_per_gpu_gb > 0
 
-    def test_megatron_deepspeed(self, base_model_config, base_training_config,
-                               base_parallelism_config, base_gpu_config):
+    def test_megatron_deepspeed(
+        self, base_model_config, base_training_config, base_parallelism_config, base_gpu_config
+    ):
         """Test Megatron-LM + DeepSpeed combined."""
         engine_config = EngineConfig(
             type=EngineType.MEGATRON_DEEPSPEED,
@@ -240,8 +247,9 @@ class TestTrainingEngines:
 
         assert result.total_memory_per_gpu_gb > 0
 
-    def test_fsdp_full_shard(self, base_model_config, base_training_config,
-                            base_parallelism_config, base_gpu_config):
+    def test_fsdp_full_shard(
+        self, base_model_config, base_training_config, base_parallelism_config, base_gpu_config
+    ):
         """Test PyTorch FSDP with full sharding."""
         engine_config = EngineConfig(
             type=EngineType.FSDP,
@@ -846,11 +854,11 @@ class TestMemoryBreakdown:
 
         # Sum of breakdown should equal total
         breakdown_sum = (
-            result.breakdown.model_params_gb +
-            result.breakdown.gradients_gb +
-            result.breakdown.optimizer_states_gb +
-            result.breakdown.activations_gb +
-            result.breakdown.overhead_gb
+            result.breakdown.model_params_gb
+            + result.breakdown.gradients_gb
+            + result.breakdown.optimizer_states_gb
+            + result.breakdown.activations_gb
+            + result.breakdown.overhead_gb
         )
         assert abs(breakdown_sum - result.total_memory_per_gpu_gb) < 0.1
 

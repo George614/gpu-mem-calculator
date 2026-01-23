@@ -135,11 +135,7 @@ class ParallelismConfig(BaseModel):
     @property
     def total_parallel_size(self) -> int:
         """Calculate total parallelism degree."""
-        return (
-            self.tensor_parallel_size
-            * self.pipeline_parallel_size
-            * self.data_parallel_size
-        )
+        return self.tensor_parallel_size * self.pipeline_parallel_size * self.data_parallel_size
 
 
 class EngineConfig(BaseModel):

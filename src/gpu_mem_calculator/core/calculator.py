@@ -24,11 +24,7 @@ from gpu_mem_calculator.engines import (
 
 # Type alias for engine types
 EngineTypeAlias = (
-    PyTorchDDPEngine
-    | DeepSpeedEngine
-    | MegatronLMEngine
-    | FSDPEngine
-    | MegatronDeepSpeedEngine
+    PyTorchDDPEngine | DeepSpeedEngine | MegatronLMEngine | FSDPEngine | MegatronDeepSpeedEngine
 )
 
 
