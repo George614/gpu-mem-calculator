@@ -227,6 +227,59 @@ python -m gpu_mem_calculator.web.app
 
 ## 🎓 Next Steps
 
+### Learn about new features
+
+#### 🆕 Inference Memory Calculation
+Calculate GPU memory for LLM inference with different engines:
+```python
+from gpu_mem_calculator.inference.calculator import InferenceMemoryCalculator
+from gpu_mem_calculator.core.models import InferenceConfig, InferenceEngineType
+
+calculator = InferenceMemoryCalculator(model_config, inference_config, gpu_config)
+
+# Compare engines
+result_vllm = calculator.calculate(InferenceEngineType.VLLM)
+result_tgi = calculator.calculate(InferenceEngineType.TGI)
+result_trt = calculator.calculate(InferenceEngineType.TENSORRT_LLM)
+
+print(f"vLLM: {result_vllm.total_memory_per_gpu_gb:.2f} GB")
+print(f"Max batch: {result_vllm.max_supported_batch_size}")
+```
+
+#### 🆕 Multi-Node Training
+Calculate network overhead for distributed training:
+```python
+from gpu_mem_calculator.core.multinode import MultiNodeCalculator
+from gpu_mem_calculator.core.models import NodeConfig, InterconnectType
+
+node_config = NodeConfig(
+    num_nodes=4,
+    gpus_per_node=8,
+    interconnect_type=InterconnectType.INFINIBAND,
+)
+
+calculator = MultiNodeCalculator(model_config, training_config,
+                                  parallelism_config, node_config, engine_config)
+overhead = calculator.calculate_network_overhead()
+
+print(f"Network overhead: {overhead.total_overhead_gb:.2f} GB")
+print(f"Time overhead: {overhead.estimated_overhead_ms_per_step:.2f} ms/step")
+```
+
+#### 🆕 Export Framework Configs
+Generate configurations for training frameworks:
+```python
+from gpu_mem_calculator.exporters.manager import ExportManager, ExportFormat
+
+manager = ExportManager(model_config, training_config, parallelism_config,
+                       engine_config, node_config)
+
+# Export to different frameworks
+manager.export_to_file(ExportFormat.ACCELERATE, "accelerate_config.yaml")
+manager.export_to_file(ExportFormat.LIGHTNING, "lightning_config.json")
+manager.export_to_file(ExportFormat.AXOLOTL, "axolotl_config.yml")
+```
+
 ### Learn more about engines
 
 Read about different training engines:
