@@ -27,9 +27,9 @@ from gpu_mem_calculator.core.models import (
     ParallelismConfig,
     TrainingConfig,
 )
-from gpu_mem_calculator.inference.calculator import InferenceMemoryCalculator
 from gpu_mem_calculator.core.multinode import MultiNodeCalculator
-from gpu_mem_calculator.exporters.manager import ExportManager, ExportFormat
+from gpu_mem_calculator.exporters.manager import ExportFormat, ExportManager
+from gpu_mem_calculator.inference.calculator import InferenceMemoryCalculator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -726,7 +726,8 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                 }
 
         # Add activation memory explanation
-        formula_info["formula_components"].append(
+        components: list[dict[str, Any]] = formula_info["formula_components"]  # type: ignore[assignment]
+        components.append(
             {
                 "name": "Activations",
                 "formula": (
@@ -855,7 +856,10 @@ async def calculate_inference_memory(request: dict[str, Any]) -> dict[str, Any]:
         # Parse num_parameters if it's a string
         if "num_parameters" in model_data and isinstance(model_data["num_parameters"], str):
             from gpu_mem_calculator.config.parser import ConfigParser
-            model_data["num_parameters"] = ConfigParser._parse_num_params(model_data["num_parameters"])
+
+            model_data["num_parameters"] = ConfigParser._parse_num_params(
+                model_data["num_parameters"]
+            )
 
         # Create model config
         model_config = ModelConfig(**model_data)
@@ -864,6 +868,7 @@ async def calculate_inference_memory(request: dict[str, Any]) -> dict[str, Any]:
         kv_cache_quantization = inference_data.get("kv_cache_quantization", "none")
         if isinstance(kv_cache_quantization, str):
             from gpu_mem_calculator.core.models import KVCacheQuantization
+
             kv_cache_quantization = KVCacheQuantization(kv_cache_quantization)
 
         inference_config = InferenceConfig(
@@ -897,13 +902,13 @@ async def calculate_inference_memory(request: dict[str, Any]) -> dict[str, Any]:
         return {
             "total_memory_per_gpu_gb": result.total_memory_per_gpu_gb,
             "total_memory_all_gpus_gb": result.total_memory_all_gpus_gb,
-            "model_params_gb": result.model_params_gb,
-            "kv_cache_gb": result.kv_cache_gb,
-            "activations_gb": result.activations_gb,
+            "model_params_gb": result.breakdown.model_params_gb,
+            "kv_cache_gb": result.breakdown.kv_cache_gb,
+            "activations_gb": result.breakdown.activations_gb,
             "max_supported_batch_size": result.max_supported_batch_size,
             "estimated_throughput_tokens_per_sec": result.estimated_throughput_tokens_per_sec,
             "fits_on_gpu": result.fits_on_gpu,
-            "utilization": result.utilization,
+            "utilization": result.memory_utilization_percent / 100.0,  # Convert % to fraction
         }
 
     except Exception as e:
@@ -929,12 +934,14 @@ async def calculate_multinode(request: dict[str, Any]) -> dict[str, Any]:
         parallelism_data = request.get("parallelism", {})
         engine_data = request.get("engine", {})
         node_data = request.get("node_config", {})
-        optimize_strategy = request.get("optimize_strategy", True)
 
         # Parse num_parameters if it's a string
         if "num_parameters" in model_data and isinstance(model_data["num_parameters"], str):
             from gpu_mem_calculator.config.parser import ConfigParser
-            model_data["num_parameters"] = ConfigParser._parse_num_params(model_data["num_parameters"])
+
+            model_data["num_parameters"] = ConfigParser._parse_num_params(
+                model_data["num_parameters"]
+            )
 
         # Create minimal configs for multi-node calculation
         model_config = ModelConfig(
@@ -942,12 +949,12 @@ async def calculate_multinode(request: dict[str, Any]) -> dict[str, Any]:
             num_parameters=model_data.get("num_parameters", 7_000_000_000),
             num_layers=32,
             hidden_size=4096,
+            num_attention_heads=32,
         )
 
         training_config = TrainingConfig(
             dtype=training_data.get("dtype", "bf16"),
             batch_size=training_data.get("batch_size", 4),
-            seq_length=training_data.get("seq_length", 4096),
         )
 
         parallelism_config = ParallelismConfig(
@@ -990,13 +997,20 @@ async def calculate_multinode(request: dict[str, Any]) -> dict[str, Any]:
         overhead = calculator.calculate_network_overhead()
 
         # Generate optimization suggestions
-        suggestions = []
+        suggestions: list[str] = []
         if overhead.total_overhead_gb > 10:
             suggestions.append("Consider reducing tensor parallelism to lower AllGather overhead")
         if overhead.estimated_overhead_ms_per_step and overhead.estimated_overhead_ms_per_step > 50:
-            suggestions.append(f"High communication overhead ({overhead.estimated_overhead_ms_per_step:.1f}ms/step). Consider upgrading interconnect or reducing model size.")
+            overhead_val = overhead.estimated_overhead_ms_per_step
+            suggestions.append(
+                f"High communication overhead ({overhead_val:.1f}ms/step). "
+                "Consider upgrading interconnect or reducing model size."
+            )
         if interconnect_type_str.startswith("ethernet") and node_config.num_nodes > 2:
-            suggestions.append("Ethernet interconnect detected. For multi-node training, consider InfiniBand for better performance.")
+            suggestions.append(
+                "Ethernet interconnect detected. For multi-node training, "
+                "consider InfiniBand for better performance."
+            )
 
         return {
             "network_overhead": {
@@ -1004,10 +1018,10 @@ async def calculate_multinode(request: dict[str, Any]) -> dict[str, Any]:
                 "allreduce_gb": overhead.allreduce_gb,
                 "allgather_gb": overhead.allgather_gb,
                 "reducescatter_gb": overhead.reducescatter_gb,
-                "pipeline_gb": overhead.pipeline_gb,
+                "pipeline_gb": overhead.point_to_point_gb,
                 "estimated_overhead_ms_per_step": overhead.estimated_overhead_ms_per_step,
-                "communication_time_ms_per_step": overhead.communication_time_ms_per_step,
-                "latency_overhead_ms": overhead.latency_overhead_ms,
+                "communication_time_ms_per_step": None,
+                "latency_overhead_ms": None,
             },
             "suggestions": suggestions,
         }
@@ -1035,7 +1049,10 @@ async def export_framework_config(format: str, request: CalculateRequest) -> dic
         model_data = request.model.copy()
         if "num_parameters" in model_data and isinstance(model_data["num_parameters"], str):
             from gpu_mem_calculator.config.parser import ConfigParser
-            model_data["num_parameters"] = ConfigParser._parse_num_params(model_data["num_parameters"])
+
+            model_data["num_parameters"] = ConfigParser._parse_num_params(
+                model_data["num_parameters"]
+            )
 
         model_config = ModelConfig(**model_data)
         training_config = TrainingConfig(**request.training)
@@ -1061,7 +1078,7 @@ async def export_framework_config(format: str, request: CalculateRequest) -> dic
         if not export_format:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported export format: {format}. Supported: {list(format_map.keys())}"
+                detail=f"Unsupported export format: {format}. Supported: {list(format_map.keys())}",
             )
 
         # Export configuration
@@ -1075,10 +1092,16 @@ async def export_framework_config(format: str, request: CalculateRequest) -> dic
 
         result = manager.export(export_format)
 
+        # Generate filename
+        if isinstance(result, dict):
+            filename = f"config_{format}.{result.get('extension', 'txt')}"
+        else:
+            filename = f"config.{format}"
+
         return {
             "format": format,
             "content": result,
-            "filename": f"config_{format}.{result.get('extension', 'txt')}" if isinstance(result, dict) else f"config.{format}",
+            "filename": filename,
         }
 
     except HTTPException:
