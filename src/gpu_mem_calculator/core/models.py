@@ -19,6 +19,16 @@ class EngineType(str, Enum):
     MEGATRON_DEEPSPEED = "megatron_deepspeed"
 
 
+class InferenceEngineType(str, Enum):
+    """Supported inference engine types."""
+
+    HUGGINGFACE = "huggingface"
+    VLLM = "vllm"
+    TGI = "tgi"
+    TENSORRT_LLM = "tensorrt_llm"
+    TRTLLM = "trtllm"
+
+
 class OptimizerType(str, Enum):
     """Supported optimizer types."""
 
@@ -228,4 +238,83 @@ class MemoryResult(BaseModel):
     recommended_batch_size: int | None = Field(
         default=None,
         description="Recommended batch size if current doesn't fit",
+    )
+
+
+class KVCacheQuantization(str, Enum):
+    """KV cache quantization options."""
+
+    NONE = "none"
+    INT8 = "int8"
+    FP8 = "fp8"
+    INT4 = "int4"
+
+
+class InferenceMemoryBreakdown(BaseModel):
+    """Memory breakdown for inference workloads."""
+
+    model_config = ConfigDict(protected_namespaces=())
+
+    model_params_gb: float = Field(ge=0, description="Model parameters memory in GB")
+    kv_cache_gb: float = Field(ge=0, description="KV cache memory in GB")
+    activations_gb: float = Field(ge=0, description="Activation memory in GB")
+    overhead_gb: float = Field(default=0.0, ge=0, description="Additional overhead in GB")
+
+    @property
+    def total_memory_gb(self) -> float:
+        """Total memory in GB."""
+        return (
+            self.model_params_gb
+            + self.kv_cache_gb
+            + self.activations_gb
+            + self.overhead_gb
+        )
+
+
+class InferenceConfig(BaseModel):
+    """Inference-specific configuration."""
+
+    batch_size: int = Field(default=1, gt=0, description="Batch size for inference")
+    max_seq_len: int | None = Field(
+        default=None,
+        gt=0,
+        description="Override max sequence length for inference (default: use model config)",
+    )
+    kv_cache_quantization: KVCacheQuantization = Field(
+        default=KVCacheQuantization.NONE,
+        description="KV cache quantization type",
+    )
+    use_kv_cache: bool = Field(default=True, description="Enable KV cache for generation")
+    tensor_parallel_size: int = Field(default=1, ge=1, description="Tensor parallelism degree")
+    enable_streaming: bool = Field(default=False, description="Enable streaming inference")
+    # vLLM-specific options
+    block_size: int | None = Field(
+        default=None,
+        ge=1,
+        description="Block size for vLLM KV cache management (default: 16)",
+    )
+    gpu_memory_utilization: float = Field(
+        default=0.9,
+        gt=0.0,
+        le=1.0,
+        description="GPU memory utilization target (0.0-1.0)",
+    )
+    swap_space_gb: float = Field(default=0.0, ge=0.0, description="CPU swap space in GB")
+
+
+class InferenceMemoryResult(BaseModel):
+    """Inference memory calculation result."""
+
+    total_memory_per_gpu_gb: float = Field(ge=0, description="Total memory per GPU in GB")
+    total_memory_all_gpus_gb: float = Field(ge=0, description="Total memory across all GPUs in GB")
+    breakdown: InferenceMemoryBreakdown = Field(description="Memory breakdown by component")
+    fits_on_gpu: bool = Field(description="Whether the config fits on available GPU")
+    memory_utilization_percent: float = Field(ge=0, description="Memory utilization percentage")
+    max_supported_batch_size: int | None = Field(
+        default=None,
+        description="Maximum batch size that fits in GPU memory",
+    )
+    estimated_throughput_tokens_per_sec: float | None = Field(
+        default=None,
+        description="Estimated throughput in tokens/second",
     )
