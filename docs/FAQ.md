@@ -69,7 +69,13 @@ You can also define custom models by specifying model parameters.
 
 ### Can I use this for inference?
 
-Currently, the tool focuses on training memory calculations. Inference memory is generally much lower and less complex. We may add inference support in future versions.
+**Yes!** The calculator now supports inference memory calculation with:
+- Multiple inference engines (HuggingFace, vLLM, TGI, TensorRT-LLM)
+- KV cache quantization (NONE, INT8, FP8, INT4)
+- Tensor parallelism for distributed inference
+- Batch size optimization and throughput estimation
+
+See the Python API examples in the README for usage details.
 
 ### Which training engine should I use?
 
@@ -199,7 +205,24 @@ ZeRO-3 shards model parameters but needs to gather a full layer during forward/b
 
 ### What about communication overhead?
 
-The calculator focuses on memory requirements. Communication overhead affects training speed but not memory usage (except for temporary communication buffers, which are typically small).
+**Multi-node communication is now supported!** The calculator can estimate:
+- AllReduce, AllGather, ReduceScatter, and pipeline communication overhead
+- Time overhead per step based on interconnect bandwidth
+- Support for InfiniBand, NVLink, and Ethernet (10G/25G/100G/200G)
+- ZeRO stage impact on communication patterns
+
+Use the `MultiNodeCalculator` class for these calculations.
+
+### Can I export configurations to training frameworks?
+
+**Yes!** The exporter module supports:
+- **HuggingFace Accelerate**: Config for distributed training
+- **PyTorch Lightning**: Trainer configuration with strategy settings
+- **Axolotl**: YAML config for LLM fine-tuning
+- **DeepSpeed**: Standalone DeepSpeed config export
+- **Generic formats**: YAML and JSON exports
+
+See the ExportManager documentation in the README.
 
 ## Getting Help
 

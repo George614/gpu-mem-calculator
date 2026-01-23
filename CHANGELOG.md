@@ -8,10 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Enhanced documentation with contribution guidelines
-- Code of Conduct for community engagement
-- Changelog for tracking project history
-- GitHub badges for better visibility
+- 🚀 **Inference Memory Calculation**: Support for HuggingFace, vLLM, TGI, TensorRT-LLM inference engines
+  - KV cache quantization (NONE, INT8, FP8, INT4)
+  - Tensor parallelism for distributed inference
+  - Throughput estimation and batch size optimization
+  - Memory feasibility analysis for inference workloads
+- 🌐 **Multi-Node Training**: Network overhead calculation and hybrid parallelism optimization
+  - AllReduce, AllGather, ReduceScatter, pipeline communication estimation
+  - Interconnect support (InfiniBand, NVLink, Ethernet 10G/25G/100G/200G)
+  - Automatic TP+PP+DP strategy optimization
+  - ZeRO stage impact analysis
+- 📦 **Framework Configuration Exporters**: Export to Accelerate, Lightning, Axolotl formats
+  - HuggingFace Accelerate config generation
+  - PyTorch Lightning Trainer configuration
+  - Axolotl YAML config for fine-tuning
+  - DeepSpeed config export
+  - Generic YAML/JSON export
+- 🧪 **Comprehensive Test Suite**: 191 tests with 95% coverage on new modules
+  - Inference engine tests (71 tests)
+  - Multi-node calculator tests (50 tests)
+  - Exporter tests (70 tests)
+
+### Changed
+- Updated README with new feature documentation and API examples
+- Updated FAQ with inference, multi-node, and exporter information
+- Updated Getting Started guide with new feature examples
 
 ## [0.1.0] - 2024
 

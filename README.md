@@ -27,12 +27,33 @@ Whether you're training a 7B parameter model on a single GPU or a 175B model acr
 
 ## ✨ Features
 
+### Core Training Calculation
 - 🔧 **Multiple Training Engines**: Support for PyTorch DDP, DeepSpeed ZeRO (stages 1-3), Megatron-LM, Megatron+DeepSpeed, and PyTorch FSDP
 - 🖥️ **Dual Interface**: Both CLI and Web UI for flexible usage
 - 🎯 **Preset Models**: Quick-load configurations for popular models (LLaMA 2, GPT-3, etc.)
 - 📊 **Detailed Breakdown**: Memory breakdown by component (parameters, gradients, optimizer states, activations)
 - ✅ **Feasibility Analysis**: Check if your configuration fits on available GPU memory
-- ⚙️ **Easy Config**: JSON-based configuration files with human-readable parameter formats
+- ⚙️ **Easy Config**: JSON-based configuration files with human-readable parameter formats (e.g., "7B", "7000M")
+
+### 🆕 Inference Memory Calculation
+- 🚀 **Multi-Engine Support**: HuggingFace Transformers, vLLM, TGI, TensorRT-LLM
+- 💾 **KV Cache Optimization**: Quantization options (NONE, INT8, FP8, INT4)
+- 🔄 **Tensor Parallelism**: Automatic memory distribution across GPUs
+- 📈 **Throughput Estimation**: Tokens/second estimates for capacity planning
+- 🎯 **Batch Size Optimization**: Find maximum batch size for your hardware
+
+### 🆕 Multi-Node Training
+- 🌐 **Network Overhead Calculation**: AllReduce, AllGather, ReduceScatter, pipeline communication
+- 📡 **Interconnect Support**: InfiniBand, NVLink, Ethernet (10G/25G/100G/200G)
+- ⚡ **Hybrid Parallelism Optimization**: Automatic TP+PP+DP strategy optimization
+- 🔧 **ZeRO Stage Impact Analysis**: Compare communication overhead across ZeRO stages
+
+### 🆕 Framework Configuration Exporters
+- 📦 **Accelerate Export**: HuggingFace Accelerate config generation
+- ⚡ **Lightning Export**: PyTorch Lightning Trainer configuration
+- 🔥 **Axolotl Export**: YAML config for fine-tuning
+- 📄 **File Export**: Save to YAML/JSON formats
+- 🎛️ **Format Conversion**: Convert between different framework configs
 
 ## 📦 Installation
 
@@ -168,6 +189,8 @@ Then open your browser to `http://localhost:8000`
 
 ### Python API
 
+#### Training Memory Calculation
+
 ```python
 from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 from gpu_mem_calculator.core.models import (
@@ -225,6 +248,122 @@ result = calculator.calculate()
 print(f"Memory per GPU: {result.total_memory_per_gpu_gb:.2f} GB")
 print(f"Fits on GPU: {result.fits_on_gpu}")
 print(f"Utilization: {result.memory_utilization_percent:.1f}%")
+```
+
+#### 🆕 Inference Memory Calculation
+
+```python
+from gpu_mem_calculator.inference.calculator import InferenceMemoryCalculator
+from gpu_mem_calculator.core.models import (
+    ModelConfig,
+    InferenceConfig,
+    InferenceEngineType,
+    GPUConfig,
+)
+
+# Create configurations
+model_config = ModelConfig(
+    name="llama2-7b",
+    num_parameters=7_000_000_000,
+    num_layers=32,
+    hidden_size=4096,
+    num_attention_heads=32,
+    max_seq_len=4096,
+)
+
+inference_config = InferenceConfig(
+    batch_size=32,
+    kv_cache_quantization="int8",  # NONE, INT8, FP8, INT4
+    tensor_parallel_size=2,
+    gpu_memory_utilization=0.9,
+)
+
+gpu_config = GPUConfig(num_gpus=2, gpu_memory_gb=80)
+
+# Calculate for different inference engines
+calculator = InferenceMemoryCalculator(model_config, inference_config, gpu_config)
+
+# vLLM inference
+result_vllm = calculator.calculate(InferenceEngineType.VLLM)
+print(f"vLLM: {result_vllm.total_memory_per_gpu_gb:.2f} GB")
+print(f"Max batch size: {result_vllm.max_supported_batch_size}")
+print(f"Throughput: {result_vllm.estimated_throughput_tokens_per_sec:.0f} tokens/sec")
+
+# TensorRT-LLM inference
+result_trt = calculator.calculate(InferenceEngineType.TENSORRT_LLM)
+print(f"TensorRT-LLM: {result_trt.total_memory_per_gpu_gb:.2f} GB")
+```
+
+#### 🆕 Multi-Node Network Overhead
+
+```python
+from gpu_mem_calculator.core.multinode import MultiNodeCalculator
+from gpu_mem_calculator.core.models import (
+    NodeConfig,
+    InterconnectType,
+)
+
+# Configure multi-node setup
+node_config = NodeConfig(
+    num_nodes=4,
+    gpus_per_node=8,
+    interconnect_type=InterconnectType.INFINIBAND,
+)
+
+calculator = MultiNodeCalculator(
+    model_config=model_config,
+    training_config=training_config,
+    parallelism_config=parallelism_config,
+    node_config=node_config,
+    engine_config=engine_config,
+)
+
+# Calculate network overhead
+network_overhead = calculator.calculate_network_overhead()
+print(f"AllReduce: {network_overhead.allreduce_gb:.2f} GB")
+print(f"AllGather: {network_overhead.allgather_gb:.2f} GB")
+print(f"Time overhead: {network_overhead.estimated_overhead_ms_per_step:.2f} ms/step")
+
+# Optimize hybrid parallelism
+from gpu_mem_calculator.core.models import HybridParallelismConfig
+
+hybrid_config = HybridParallelismConfig(
+    auto_optimize=True,
+    prefer_pipeline_parallel=True,
+    enable_sequence_parallel=True,
+)
+
+optimized_parallelism = calculator.optimize_hybrid_parallelism(hybrid_config)
+print(f"Optimized TP: {optimized_parallelism.tensor_parallel_size}")
+print(f"Optimized PP: {optimized_parallelism.pipeline_parallel_size}")
+print(f"Optimized DP: {optimized_parallelism.data_parallel_size}")
+```
+
+#### 🆕 Export Framework Configurations
+
+```python
+from gpu_mem_calculator.exporters.manager import ExportManager, ExportFormat
+
+# Create export manager
+manager = ExportManager(
+    model_config=model_config,
+    training_config=training_config,
+    parallelism_config=parallelism_config,
+    engine_config=engine_config,
+    node_config=node_config,
+)
+
+# Export to different formats
+accelerate_config = manager.export(ExportFormat.ACCELERATE)
+lightning_config = manager.export(ExportFormat.LIGHTNING)
+axolotl_config = manager.export(ExportFormat.AXOLOTL)
+
+# Export to file
+manager.export_to_file(ExportFormat.ACCELERATE, "accelerate_config.yaml")
+manager.export_to_file(ExportFormat.JSON, "config.json")
+
+# Get DeepSpeed config
+deepspeed_config = manager.export(ExportFormat.DEEPSPEED)
 ```
 
 ## Configuration File Format
@@ -495,15 +634,13 @@ If you find this tool useful, please consider giving it a star! ⭐
 
 ## 📋 Roadmap
 
-Planned features and improvements:
-
+- [x] Inference memory calculation
+- [x] Multi-node training configurations
+- [x] Export to training framework configs (Accelerate, Lightning, Axolotl)
 - [ ] PyPI package distribution
 - [ ] Support for more model architectures (Vision Transformers, Diffusion models)
-- [ ] Inference memory calculation
-- [ ] Multi-node training configurations
-- [ ] Integration with popular training frameworks
 - [ ] Real-time memory monitoring dashboard
-- [ ] Export to training configuration files
+- [ ] CLI commands for inference and export features
 
 ## 🙏 Acknowledgments
 
