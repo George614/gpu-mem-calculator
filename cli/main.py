@@ -3,9 +3,13 @@
 import json
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import click
+
+if TYPE_CHECKING:
+    from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
+    from gpu_mem_calculator.core.models import MemoryResult
 
 
 @click.group()
@@ -91,8 +95,12 @@ def calculate(
 
             calculator = GPUMemoryCalculator.from_config_file(temp_path)
             Path(temp_path).unlink()  # Clean up temp file
-        else:
+        elif config:
             calculator = GPUMemoryCalculator.from_config_file(config)
+        else:
+            # This should never happen due to the checks above
+            click.echo("Error: Either --config or --preset is required", err=True)
+            sys.exit(1)
 
         result = calculator.calculate()
 
@@ -101,7 +109,7 @@ def calculate(
             output_text = json.dumps(result.model_dump(mode="json"), indent=2)
         elif format == "yaml":
             try:
-                import yaml
+                import yaml  # type: ignore[import-untyped]
 
                 output_text = yaml.dump(result.model_dump(mode="json"), default_flow_style=False)
             except ImportError:
@@ -330,7 +338,7 @@ def presets(format: str) -> None:
             console.print(table)
         else:  # list format
             click.echo("Available model presets:\n")
-            for name, info in sorted(all_presets.items()):
+            for name, info in sorted(all_presets.items()):  # type: ignore[annotation-unchecked]
                 click.echo(f"  {name:25} - {info['display_name']}")
                 if info.get("description"):
                     click.echo(f"{'':27}{info['description']}")
@@ -341,7 +349,7 @@ def presets(format: str) -> None:
         sys.exit(1)
 
 
-def _format_result_as_table(result, calculator) -> str:
+def _format_result_as_table(result: MemoryResult, calculator: "GPUMemoryCalculator") -> str:
     """Format result as ASCII table."""
     from rich.console import Console
     from rich.table import Table

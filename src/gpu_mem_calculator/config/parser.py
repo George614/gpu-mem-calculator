@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pydantic import ValidationError
 
@@ -252,7 +252,7 @@ class ConfigParser:
 
         try:
             with path.open("r") as f:
-                data = json.load(f)
+                data = cast(dict[str, Any], json.load(f))
             return data
         except json.JSONDecodeError as e:
             raise ConfigParseError(f"Invalid JSON in configuration file: {e}") from e

@@ -6,7 +6,7 @@ configurations that can be used by both CLI and web interfaces.
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Base directory for the package
 BASE_DIR = Path(__file__).parent.parent.parent.parent
@@ -42,7 +42,7 @@ def load_presets() -> dict[str, dict[str, Any]]:
 
     try:
         with presets_file.open("r") as f:
-            return json.load(f)
+            return cast(dict[str, dict[str, Any]], json.load(f))
     except (json.JSONDecodeError, OSError):
         return {}
 
@@ -63,7 +63,7 @@ def get_preset_config(preset_name: str) -> dict[str, Any] | None:
         return None
 
     # Return just the config part (what the calculator needs)
-    return preset.get("config", {})
+    return cast(dict[str, Any], preset.get("config", {}))
 
 
 def list_presets() -> dict[str, dict[str, str]]:
