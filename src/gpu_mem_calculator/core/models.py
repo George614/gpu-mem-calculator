@@ -78,7 +78,7 @@ class ModelConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def calculate_largest_layer(self) -> "ModelConfig":
+    def calculate_largest_layer(self) -> ModelConfig:
         """Calculate largest layer params if not provided."""
         if self.largest_layer_params is not None:
             return self
