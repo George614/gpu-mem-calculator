@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal, cast
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo as FieldValidationInfo
 
 
@@ -77,25 +77,23 @@ class ModelConfig(BaseModel):
         description="Shared expert intermediate size (for models like GLM with shared experts)",
     )
 
-    @field_validator("largest_layer_params")
-    @classmethod
-    def calculate_largest_layer(cls, v: int | None, info: FieldValidationInfo) -> int | None:
+    @model_validator(mode="after")
+    def calculate_largest_layer(self) -> "ModelConfig":
         """Calculate largest layer params if not provided."""
-        if v is None:
-            # Estimate based on whether MoE is enabled
-            hidden = info.data.get("hidden_size", 0)
-            moe_enabled = info.data.get("moe_enabled", False)
+        if self.largest_layer_params is not None:
+            return self
+        # Calculate it
+        hidden = self.hidden_size
+        moe_enabled = self.moe_enabled
 
-            if hidden:
-                if moe_enabled:
-                    # For MoE: largest layer includes expert parameters
-                    # Typical expert: hidden_size * intermediate_size
-                    expert_intermediate = info.data.get("expert_intermediate_size") or hidden * 4
-                    return int(hidden * expert_intermediate * 2)  # Rough estimate for MoE layer
-                else:
-                    # Dense model: attention output + MLP
-                    return int(hidden * hidden * 4)  # Rough estimate
-        return v
+        if hidden and moe_enabled:
+            # For MoE: largest layer includes expert parameters
+            expert_intermediate = self.expert_intermediate_size or hidden * 4
+            self.largest_layer_params = int(hidden * expert_intermediate * 2)
+        elif hidden:
+            # Dense model: attention output + MLP
+            self.largest_layer_params = int(hidden * hidden * 4)
+        return self
 
     @property
     def effective_num_experts(self) -> int:
@@ -125,6 +123,11 @@ class TrainingConfig(BaseModel):
         le=4,
         description="Activation checkpointing level (0-4)",
     )
+
+    @property
+    def effective_batch_size(self) -> int:
+        """Calculate effective batch size with gradient accumulation."""
+        return self.batch_size * self.gradient_accumulation_steps
 
 
 class ParallelismConfig(BaseModel):
