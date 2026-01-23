@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from gpu_mem_calculator.config.parser import ConfigParser
-from gpu_mem_calculator.config.presets import get_preset_config, list_presets, load_presets
+from gpu_mem_calculator.config.presets import get_preset_config, list_presets
 from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 from gpu_mem_calculator.core.models import (
     DType,
@@ -585,7 +585,7 @@ class TestPresetConfigurations:
         config = get_preset_config("mixtral-8x7b")
 
         assert config is not None
-        assert config["model"]["moe_enabled"] == True
+        assert config["model"]["moe_enabled"] is True
         assert config["model"]["num_experts"] == 8
         assert config["model"]["top_k"] == 2
 

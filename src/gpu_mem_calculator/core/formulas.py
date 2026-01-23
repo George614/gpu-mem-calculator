@@ -6,8 +6,6 @@ requirements for LLM training.
 
 from dataclasses import dataclass
 
-from gpu_mem_calculator.utils.precision import get_precision_from_dtype
-
 
 @dataclass
 class Precision:
@@ -83,7 +81,7 @@ def calculate_optimizer_memory(
     from gpu_mem_calculator.utils.precision import gb_from_bytes
 
     # Optimizer states are typically stored in FP32
-    bytes_per_param = 4.0  # FP32
+    # bytes_per_param = 4.0  # FP32
 
     match optimizer.lower():
         case "adam" | "adamw":
