@@ -45,7 +45,12 @@ def main() -> None:
     default="table",
     help="Output format (default: table)",
 )
-def calculate(config: str | None, preset: str | None, output: str | None, format: Literal["json", "yaml", "table"]) -> None:
+def calculate(
+    config: str | None,
+    preset: str | None,
+    output: str | None,
+    format: Literal["json", "yaml", "table"],
+) -> None:
     """Calculate GPU memory requirements from config file or preset.
 
     Examples:
@@ -62,8 +67,9 @@ def calculate(config: str | None, preset: str | None, output: str | None, format
         sys.exit(1)
 
     try:
-        from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
         import tempfile
+
+        from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 
         if preset:
             # Load preset configuration
@@ -71,7 +77,11 @@ def calculate(config: str | None, preset: str | None, output: str | None, format
 
             preset_config = get_preset_config(preset)
             if preset_config is None:
-                click.echo(f"Error: Preset '{preset}' not found. Use 'gpu-mem-calc presets' to list available presets.", err=True)
+                click.echo(
+                    f"Error: Preset '{preset}' not found. "
+                    "Use 'gpu-mem-calc presets' to list available presets.",
+                    err=True,
+                )
                 sys.exit(1)
 
             # Write preset to temp file for from_config_file
@@ -305,7 +315,11 @@ def presets(format: str) -> None:
             from rich.table import Table
 
             console = Console()
-            table = Table(title="Available Model Presets", show_header=True, header_style="bold magenta")
+            table = Table(
+                title="Available Model Presets",
+                show_header=True,
+                header_style="bold magenta",
+            )
             table.add_column("Preset Name", style="cyan", width=25)
             table.add_column("Display Name", style="green", width=30)
             table.add_column("Description", style="yellow")
@@ -335,7 +349,11 @@ def _format_result_as_table(result, calculator) -> str:
     console = Console()
 
     # Main results table
-    table = Table(title="GPU Memory Calculation Results", show_header=True, header_style="bold magenta")
+    table = Table(
+        title="GPU Memory Calculation Results",
+        show_header=True,
+        header_style="bold magenta",
+    )
     table.add_column("Metric", style="cyan", width=30)
     table.add_column("Value", style="green")
 

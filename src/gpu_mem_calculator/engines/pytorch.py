@@ -8,19 +8,14 @@ Reference: https://blog.eleuther.ai/transformer-math/
 
 from gpu_mem_calculator.core.formulas import (
     calculate_activation_memory,
+    calculate_gradient_memory,
     calculate_optimizer_memory,
     calculate_overhead,
     calculate_parameter_memory,
-    calculate_gradient_memory,
 )
 from gpu_mem_calculator.core.models import (
-    EngineConfig,
-    GPUConfig,
     MemoryBreakdown,
     MemoryResult,
-    ModelConfig,
-    ParallelismConfig,
-    TrainingConfig,
 )
 from gpu_mem_calculator.engines.base import BaseEngine
 

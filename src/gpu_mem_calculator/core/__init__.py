@@ -1,5 +1,6 @@
 """Core memory calculation models and formulas."""
 
+from gpu_mem_calculator.core.formulas import Precision
 from gpu_mem_calculator.core.models import (
     EngineConfig,
     EngineType,
@@ -8,7 +9,6 @@ from gpu_mem_calculator.core.models import (
     ParallelismConfig,
     TrainingConfig,
 )
-from gpu_mem_calculator.core.formulas import Precision
 
 __all__ = [
     "ModelConfig",

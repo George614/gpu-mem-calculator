@@ -17,9 +17,18 @@ from gpu_mem_calculator.core.models import (
 from gpu_mem_calculator.engines import (
     DeepSpeedEngine,
     FSDPEngine,
-    MegatronLMEngine,
     MegatronDeepSpeedEngine,
+    MegatronLMEngine,
     PyTorchDDPEngine,
+)
+
+# Type alias for engine types
+EngineTypeAlias = (
+    PyTorchDDPEngine
+    | DeepSpeedEngine
+    | MegatronLMEngine
+    | FSDPEngine
+    | MegatronDeepSpeedEngine
 )
 
 
@@ -65,7 +74,7 @@ class GPUMemoryCalculator:
         engine = self._get_engine()
         return engine.calculate_memory()
 
-    def _get_engine(self) -> PyTorchDDPEngine | DeepSpeedEngine | MegatronLMEngine | FSDPEngine | MegatronDeepSpeedEngine:
+    def _get_engine(self) -> EngineTypeAlias:
         """Get the appropriate training engine instance.
 
         Returns:

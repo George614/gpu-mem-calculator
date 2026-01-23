@@ -12,13 +12,8 @@ from gpu_mem_calculator.core.formulas import (
     estimate_largest_layer_params,
 )
 from gpu_mem_calculator.core.models import (
-    EngineConfig,
-    GPUConfig,
     MemoryBreakdown,
     MemoryResult,
-    ModelConfig,
-    ParallelismConfig,
-    TrainingConfig,
 )
 from gpu_mem_calculator.engines.base import BaseEngine
 from gpu_mem_calculator.utils.precision import gb_from_bytes
@@ -102,7 +97,6 @@ class FSDPEngine(BaseEngine):
         """
         num_params = self.model_config.num_parameters
         num_gpus = self.total_num_gpus
-        dtype = self.training_config.dtype.value
 
         # Model parameters (full model on each GPU)
         model_params_gb = gb_from_bytes(num_params * 2)  # FP16/BF16
@@ -156,7 +150,8 @@ class FSDPEngine(BaseEngine):
         - Remaining parameters and gradients: Sharded across GPUs (2 bytes fp16 each)
         - Optimizer states: Sharded across GPUs (12 bytes per param for Adam/AdamW in FP32)
 
-        Total per GPU: largest_layer_memory + 2 * params / num_gpus + 2 * params / num_gpus + 12 * params / num_gpus
+        Total per GPU: largest_layer_memory + 2 * params / num_gpus +
+                       2 * params / num_gpus + 12 * params / num_gpus
                     = largest_layer_memory + 16 * params / num_gpus
 
         Note: FSDP typically uses 12 bytes for optimizer states (not 16 like DeepSpeed ZeRO-3)

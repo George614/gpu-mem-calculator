@@ -82,7 +82,6 @@ class ModelConfig(BaseModel):
             # Estimate based on whether MoE is enabled
             hidden = info.data.get("hidden_size", 0)
             moe_enabled = info.data.get("moe_enabled", False)
-            num_experts = info.data.get("num_experts", 1)
 
             if hidden:
                 if moe_enabled:
@@ -110,7 +109,11 @@ class TrainingConfig(BaseModel):
     """Training hyperparameters configuration."""
 
     batch_size: int = Field(default=1, gt=0, description="Batch size per GPU")
-    gradient_accumulation_steps: int = Field(default=1, gt=0, description="Gradient accumulation steps")
+    gradient_accumulation_steps: int = Field(
+        default=1,
+        gt=0,
+        description="Gradient accumulation steps",
+    )
     optimizer: OptimizerType = Field(default=OptimizerType.ADAMW, description="Optimizer type")
     dtype: DType = Field(default=DType.BF16, description="Data type for training")
     activation_checkpointing: int = Field(
