@@ -32,9 +32,9 @@ class TestPrecision:
 
     def test_gb_from_params(self):
         """Test converting parameters to GB."""
-        # 1B parameters in FP16 = 2GB
+        # 1B parameters in FP16 = ~1.86 GiB (using binary 1024-based units)
         result = gb_from_params(1_000_000_000, "fp16")
-        assert result == pytest.approx(2.0, rel=0.01)
+        assert result == pytest.approx(1.86, rel=0.01)
 
 
 class TestModelConfig:
