@@ -1,9 +1,12 @@
 """Data models for GPU memory calculation."""
 
+from __future__ import annotations
+
 from enum import Enum
-from typing import Literal
+from typing import Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_core.core_schema import ValidationInfo as FieldValidationInfo
 
 
 class EngineType(str, Enum):
@@ -76,7 +79,7 @@ class ModelConfig(BaseModel):
 
     @field_validator("largest_layer_params")
     @classmethod
-    def calculate_largest_layer(cls, v: int | None, info) -> int | None:
+    def calculate_largest_layer(cls, v: int | None, info: FieldValidationInfo) -> int | None:
         """Calculate largest layer params if not provided."""
         if v is None:
             # Estimate based on whether MoE is enabled
@@ -178,11 +181,11 @@ class GPUConfig(BaseModel):
 
     @field_validator("total_gpu_memory_gb")
     @classmethod
-    def calculate_total_memory(cls, v: float | None, info) -> float | None:
+    def calculate_total_memory(cls, v: float | None, info: FieldValidationInfo) -> float | None:
         """Calculate total GPU memory if not provided."""
         if v is None:
-            num_gpus = info.data.get("num_gpus", 1)
-            gpu_mem = info.data.get("gpu_memory_gb", 80.0)
+            num_gpus = cast(int, info.data.get("num_gpus", 1))
+            gpu_mem = cast(float, info.data.get("gpu_memory_gb", 80.0))
             return num_gpus * gpu_mem
         return v
 
