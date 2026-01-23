@@ -67,39 +67,33 @@ class CalculateRequest(BaseModel):
     engine: dict[str, Any] | None = Field(default=None, description="Engine configuration")
     hardware: dict[str, Any] | None = Field(default=None, description="Hardware configuration")
 
-    @field_validator('model')
+    @field_validator("model")
     @classmethod
     def validate_moe_settings(cls, v: dict[str, Any]) -> dict[str, Any]:
         """Validate MoE-specific constraints."""
-        if v.get('moe_enabled'):
-            num_experts = v.get('num_experts', 1)
-            top_k = v.get('top_k', 1)
+        if v.get("moe_enabled"):
+            num_experts = v.get("num_experts", 1)
+            top_k = v.get("top_k", 1)
 
             if top_k > num_experts:
-                raise ValueError(
-                    f"MoE top_k ({top_k}) cannot exceed num_experts ({num_experts})"
-                )
+                raise ValueError(f"MoE top_k ({top_k}) cannot exceed num_experts ({num_experts})")
 
             if num_experts < 1 or num_experts > 256:
-                raise ValueError(
-                    f"num_experts must be between 1 and 256, got {num_experts}"
-                )
+                raise ValueError(f"num_experts must be between 1 and 256, got {num_experts}")
 
             if top_k < 1 or top_k > 8:
-                raise ValueError(
-                    f"top_k must be between 1 and 8, got {top_k}"
-                )
+                raise ValueError(f"top_k must be between 1 and 8, got {top_k}")
 
         return v
 
-    @model_validator(mode='after')
-    def validate_parallelism_consistency(self) -> 'CalculateRequest':
+    @model_validator(mode="after")
+    def validate_parallelism_consistency(self) -> "CalculateRequest":
         """Validate parallelism settings consistency."""
         if self.parallelism and self.hardware:
-            tensor_pp = self.parallelism.get('tensor_parallel_size', 1)
-            pipeline_pp = self.parallelism.get('pipeline_parallel_size', 1)
-            data_pp = self.parallelism.get('data_parallel_size', 1)
-            num_gpus = self.hardware.get('num_gpus', 1)
+            tensor_pp = self.parallelism.get("tensor_parallel_size", 1)
+            pipeline_pp = self.parallelism.get("pipeline_parallel_size", 1)
+            data_pp = self.parallelism.get("data_parallel_size", 1)
+            num_gpus = self.hardware.get("num_gpus", 1)
 
             effective_gpus = tensor_pp * pipeline_pp * data_pp
 
@@ -112,27 +106,26 @@ class CalculateRequest(BaseModel):
                 )
 
         # Validate sequence parallel requires tensor parallel > 1
-        if self.parallelism and self.parallelism.get('sequence_parallel'):
-            tensor_pp = self.parallelism.get('tensor_parallel_size', 1)
+        if self.parallelism and self.parallelism.get("sequence_parallel"):
+            tensor_pp = self.parallelism.get("tensor_parallel_size", 1)
             if tensor_pp <= 1:
                 raise ValueError(
-                    f"Sequence parallelism requires tensor_parallel_size > 1, "
-                    f"got {tensor_pp}"
+                    f"Sequence parallelism requires tensor_parallel_size > 1, " f"got {tensor_pp}"
                 )
 
         return self
 
-    @model_validator(mode='after')
-    def validate_engine_settings(self) -> 'CalculateRequest':
+    @model_validator(mode="after")
+    def validate_engine_settings(self) -> "CalculateRequest":
         """Validate engine-specific settings."""
         if not self.engine:
             return self
 
-        engine_type = self.engine.get('type')
-        zero_stage = self.engine.get('zero_stage', 0)
+        engine_type = self.engine.get("type")
+        zero_stage = self.engine.get("zero_stage", 0)
 
         # ZeRO stages only valid for DeepSpeed engines
-        if engine_type not in ['deepspeed', 'megatron_deepspeed'] and zero_stage > 0:
+        if engine_type not in ["deepspeed", "megatron_deepspeed"] and zero_stage > 0:
             raise ValueError(
                 f"ZeRO stages are only supported for DeepSpeed engines, "
                 f"got engine_type='{engine_type}' with zero_stage={zero_stage}"
@@ -140,9 +133,7 @@ class CalculateRequest(BaseModel):
 
         # Validate ZeRO stage range
         if zero_stage < 0 or zero_stage > 3:
-            raise ValueError(
-                f"zero_stage must be between 0 and 3, got {zero_stage}"
-            )
+            raise ValueError(f"zero_stage must be between 0 and 3, got {zero_stage}")
 
         return self
 
@@ -176,6 +167,7 @@ def _get_cached_result(key: str) -> MemoryResult | None:
     if key in _calculation_cache:
         result, timestamp = _calculation_cache[key]
         import time
+
         if time.time() - timestamp < _CACHE_TTL:
             return result
         else:
@@ -187,6 +179,7 @@ def _get_cached_result(key: str) -> MemoryResult | None:
 def _cache_result(key: str, result: MemoryResult) -> None:
     """Cache calculation result."""
     import time
+
     # Simple cache eviction if too large
     if len(_calculation_cache) >= _MAX_CACHE_SIZE:
         # Remove oldest entry (first key)
@@ -319,13 +312,9 @@ async def calculate_memory(request: CalculateRequest) -> MemoryResult:
             ParallelismConfig(**request.parallelism) if request.parallelism else ParallelismConfig()
         )
 
-        engine_config = (
-            EngineConfig(**request.engine) if request.engine else EngineConfig()
-        )
+        engine_config = EngineConfig(**request.engine) if request.engine else EngineConfig()
 
-        gpu_config = (
-            GPUConfig(**request.hardware) if request.hardware else GPUConfig()
-        )
+        gpu_config = GPUConfig(**request.hardware) if request.hardware else GPUConfig()
 
         # Create calculator and compute
         calculator = GPUMemoryCalculator(
@@ -353,11 +342,7 @@ async def calculate_memory(request: CalculateRequest) -> MemoryResult:
         logger.warning(f"Validation error: {str(e)}")
         raise HTTPException(
             status_code=400,
-            detail={
-                "error": "Validation error",
-                "message": str(e),
-                "type": "validation_error"
-            }
+            detail={"error": "Validation error", "message": str(e), "type": "validation_error"},
         ) from e
     except Exception as e:
         # Unexpected system error
@@ -366,8 +351,8 @@ async def calculate_memory(request: CalculateRequest) -> MemoryResult:
             status_code=500,
             detail={
                 "error": "Internal server error",
-                "message": "An unexpected error occurred during calculation"
-            }
+                "message": "An unexpected error occurred during calculation",
+            },
         ) from e
 
 
@@ -391,46 +376,31 @@ async def export_deepspeed_config(request: CalculateRequest) -> dict[str, Any]:
         engine = request.engine or {}
 
         train_batch_size = (
-            training.get('batch_size', 1) *
-            training.get('gradient_accumulation_steps', 1) *
-            parallelism.get('data_parallel_size', 1)
+            training.get("batch_size", 1)
+            * training.get("gradient_accumulation_steps", 1)
+            * parallelism.get("data_parallel_size", 1)
         )
 
-        zero_stage = engine.get('zero_stage', 0)
-        offload_optimizer = engine.get('offload_optimizer', 'none')
-        offload_param = engine.get('offload_param', 'none')
+        zero_stage = engine.get("zero_stage", 0)
+        offload_optimizer = engine.get("offload_optimizer", "none")
+        offload_param = engine.get("offload_param", "none")
 
         deepspeed_config = {
             "train_batch_size": train_batch_size,
-            "train_micro_batch_size_per_gpu": training.get('batch_size', 1),
-            "gradient_accumulation_steps": training.get('gradient_accumulation_steps', 1),
+            "train_micro_batch_size_per_gpu": training.get("batch_size", 1),
+            "gradient_accumulation_steps": training.get("gradient_accumulation_steps", 1),
             "optimizer": {
-                "type": training.get('optimizer', 'AdamW'),
-                "params": {
-                    "lr": 0.0001,
-                    "betas": [0.9, 0.999],
-                    "eps": 1e-8,
-                    "weight_decay": 0.01
-                }
+                "type": training.get("optimizer", "AdamW"),
+                "params": {"lr": 0.0001, "betas": [0.9, 0.999], "eps": 1e-8, "weight_decay": 0.01},
             },
             "scheduler": {
                 "type": "WarmupLR",
-                "params": {
-                    "warmup_min_lr": 0,
-                    "warmup_max_lr": 0.0001,
-                    "warmup_num_steps": 2000
-                }
+                "params": {"warmup_min_lr": 0, "warmup_max_lr": 0.0001, "warmup_num_steps": 2000},
             },
-            "fp16": {
-                "enabled": training.get('dtype') in ['fp16', 'int4', 'int8']
-            },
-            "bf16": {
-                "enabled": training.get('dtype') == 'bf16'
-            },
-            "zero_optimization": {
-                "stage": zero_stage
-            },
-            "gradient_clipping": training.get('gradient_clipping', 1.0),
+            "fp16": {"enabled": training.get("dtype") in ["fp16", "int4", "int8"]},
+            "bf16": {"enabled": training.get("dtype") == "bf16"},
+            "zero_optimization": {"stage": zero_stage},
+            "gradient_clipping": training.get("gradient_clipping", 1.0),
             "steps_per_print": 100,
         }
 
@@ -439,22 +409,16 @@ async def export_deepspeed_config(request: CalculateRequest) -> dict[str, Any]:
             deepspeed_config["zero_optimization"]["offload_optimizer"] = {
                 "device": offload_optimizer
             }
-            deepspeed_config["zero_optimization"]["offload_param"] = {
-                "device": offload_param
-            }
+            deepspeed_config["zero_optimization"]["offload_param"] = {"device": offload_param}
 
-        return {
-            "config": deepspeed_config,
-            "memory_result": calc_result
-        }
+        return {"config": deepspeed_config, "memory_result": calc_result}
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"DeepSpeed export error: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate DeepSpeed config: {str(e)}"
+            status_code=500, detail=f"Failed to generate DeepSpeed config: {str(e)}"
         ) from e
 
 
@@ -483,7 +447,7 @@ async def optimize_batch_size(request: CalculateRequest) -> dict[str, Any]:
 
             # Create modified request with test batch size
             test_request = deepcopy(request)
-            test_request.training['batch_size'] = mid
+            test_request.training["batch_size"] = mid
 
             try:
                 # Validate and calculate
@@ -501,19 +465,15 @@ async def optimize_batch_size(request: CalculateRequest) -> dict[str, Any]:
 
         # Get final result for best batch size
         final_request = deepcopy(request)
-        final_request.training['batch_size'] = best_batch
+        final_request.training["batch_size"] = best_batch
         final_result = await calculate_memory(final_request)
 
-        return {
-            "max_batch_size": best_batch,
-            "memory_result": final_result
-        }
+        return {"max_batch_size": best_batch, "memory_result": final_result}
 
     except Exception as e:
         logger.error(f"Batch size optimization error: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to optimize batch size: {str(e)}"
+            status_code=500, detail=f"Failed to optimize batch size: {str(e)}"
         ) from e
 
 
@@ -556,17 +516,18 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
     """
     try:
         # Get configuration details
-        engine_type = request.engine.get('type', 'pytorch_ddp') if request.engine else 'pytorch_ddp'
-        num_params = request.model.get('num_parameters', 0)
+        engine_type = request.engine.get("type", "pytorch_ddp") if request.engine else "pytorch_ddp"
+        num_params = request.model.get("num_parameters", 0)
 
         # Parse num_parameters if it's a string (e.g., "7B", "7000M")
         if isinstance(num_params, str):
             from gpu_mem_calculator.config.parser import ConfigParser
+
             num_params = ConfigParser._parse_num_params(num_params)
 
-        optimizer = request.training.get('optimizer', 'adamw')
-        num_gpus = request.hardware.get('num_gpus', 1) if request.hardware else 1
-        batch_size = request.training.get('batch_size', 1)
+        optimizer = request.training.get("optimizer", "adamw")
+        num_gpus = request.hardware.get("num_gpus", 1) if request.hardware else 1
+        batch_size = request.training.get("batch_size", 1)
 
         # Calculate memory to get the breakdown
         result = await calculate_memory(request)
@@ -588,7 +549,7 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
         }
 
         # Add engine-specific formula details
-        if engine_type == 'pytorch_ddp':
+        if engine_type == "pytorch_ddp":
             formula_info["formula_description"] = (
                 "PyTorch DDP stores complete copies of model parameters, gradients, "
                 "and optimizer states on each GPU."
@@ -598,29 +559,29 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                     "name": "Model Parameters",
                     "formula": f"{num_params:,} × 2 bytes (FP16/BF16)",
                     "result": f"{result.breakdown.model_params_gb:.2f} GB",
-                    "description": "Full model stored on each GPU"
+                    "description": "Full model stored on each GPU",
                 },
                 {
                     "name": "Gradients",
                     "formula": f"{num_params:,} × 2 bytes (FP16)",
                     "result": f"{result.breakdown.gradients_gb:.2f} GB",
-                    "description": "Full gradients during backward pass"
+                    "description": "Full gradients during backward pass",
                 },
                 {
                     "name": "Optimizer States",
                     "formula": _get_optimizer_formula(optimizer, num_params)["formula"],
                     "result": f"{result.breakdown.optimizer_states_gb:.2f} GB",
-                    "description": _get_optimizer_formula(optimizer, num_params)["description"]
+                    "description": _get_optimizer_formula(optimizer, num_params)["description"],
                 },
             ]
 
-        elif engine_type in ['deepspeed', 'megatron_deepspeed']:
-            zero_stage = request.engine.get('zero_stage', 0) if request.engine else 0
+        elif engine_type in ["deepspeed", "megatron_deepspeed"]:
+            zero_stage = request.engine.get("zero_stage", 0) if request.engine else 0
             offload_optimizer = (
-                request.engine.get('offload_optimizer', 'none') if request.engine else 'none'
+                request.engine.get("offload_optimizer", "none") if request.engine else "none"
             )
             offload_param = (
-                request.engine.get('offload_param', 'none') if request.engine else 'none'
+                request.engine.get("offload_param", "none") if request.engine else "none"
             )
 
             if zero_stage == 0:
@@ -660,13 +621,13 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                         "name": "Largest Layer",
                         "formula": f"{largest_params:,} × 4 bytes (FP16 params + grads)",
                         "result": f"{result.breakdown.model_params_gb:.2f} GB",
-                        "description": "Gathered during compute, largest layer kept intact"
+                        "description": "Gathered during compute, largest layer kept intact",
                     },
                     {
                         "name": "Sharded Parameters",
                         "formula": f"({num_params:,} × 2 bytes) / {num_gpus} GPUs",
                         "result": "Included in model params",
-                        "description": "Remaining parameters sharded across GPUs"
+                        "description": "Remaining parameters sharded across GPUs",
                     },
                     {
                         "name": "Sharded Optimizer States",
@@ -675,7 +636,7 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                                 f"({_get_optimizer_formula(optimizer, num_params)['formula']}) "
                                 f"/ {num_gpus} GPUs"
                             )
-                            if offload_optimizer == 'none'
+                            if offload_optimizer == "none"
                             else f"Offloaded to {offload_optimizer}"
                         ),
                         "result": f"{result.breakdown.optimizer_states_gb:.2f} GB",
@@ -692,7 +653,7 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                         "name": "Model Parameters",
                         "formula": f"{num_params:,} × 2 bytes (FP16)",
                         "result": f"{result.breakdown.model_params_gb:.2f} GB",
-                        "description": "Full model on each GPU"
+                        "description": "Full model on each GPU",
                     },
                     {
                         "name": "Gradients",
@@ -713,7 +674,7 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                                 f"({_get_optimizer_formula(optimizer, num_params)['formula']}) "
                                 f"/ {num_gpus} GPUs"
                             )
-                            if offload_optimizer == 'none'
+                            if offload_optimizer == "none"
                             else f"Offloaded to {offload_optimizer}"
                         ),
                         "result": f"{result.breakdown.optimizer_states_gb:.2f} GB",
@@ -724,16 +685,16 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                     },
                 ]
 
-        elif engine_type == 'fsdp':
+        elif engine_type == "fsdp":
             sharding_strategy = (
-                request.engine.get('sharding_strategy', 'full_shard')
+                request.engine.get("sharding_strategy", "full_shard")
                 if request.engine
-                else 'full_shard'
+                else "full_shard"
             )
 
-            if sharding_strategy == 'no_shard':
+            if sharding_strategy == "no_shard":
                 strategy_name = "No Sharding (like DDP)"
-            elif sharding_strategy == 'shard_grad_op':
+            elif sharding_strategy == "shard_grad_op":
                 strategy_name = "Shard Gradients + Optimizer (like ZeRO-2)"
             else:
                 strategy_name = "Full Shard (like ZeRO-3)"
@@ -742,7 +703,7 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
             formula_info["strategy_name"] = strategy_name
             formula_info["formula_description"] = f"FSDP with {strategy_name.lower()} strategy."
 
-        elif engine_type == 'megatron_lm':
+        elif engine_type == "megatron_lm":
             formula_info["formula_description"] = (
                 "Megatron-LM uses tensor and/or pipeline parallelism to "
                 "split the model across GPUs, reducing memory per GPU."
@@ -750,31 +711,32 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
 
             # Add parallelism info
             if request.parallelism:
-                tp_size = request.parallelism.get('tensor_parallel_size', 1)
-                pp_size = request.parallelism.get('pipeline_parallel_size', 1)
+                tp_size = request.parallelism.get("tensor_parallel_size", 1)
+                pp_size = request.parallelism.get("pipeline_parallel_size", 1)
                 formula_info["parallelism"] = {
                     "tensor_parallel_size": tp_size,
                     "pipeline_parallel_size": pp_size,
                 }
 
         # Add activation memory explanation
-        formula_info["formula_components"].append({
-            "name": "Activations",
-            "formula": (
-                f"batch_size({batch_size}) × seq_len × hidden_size × "
-                f"layers × ~16 bytes/token/layer"
-            ),
-            "result": f"{result.breakdown.activations_gb:.2f} GB",
-            "description": "Memory from intermediate activations during forward/backward pass"
-        })
+        formula_info["formula_components"].append(
+            {
+                "name": "Activations",
+                "formula": (
+                    f"batch_size({batch_size}) × seq_len × hidden_size × "
+                    f"layers × ~16 bytes/token/layer"
+                ),
+                "result": f"{result.breakdown.activations_gb:.2f} GB",
+                "description": "Memory from intermediate activations during forward/backward pass",
+            }
+        )
 
         return formula_info
 
     except Exception as e:
         logger.error(f"Formula explanation error: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate formula explanation: {str(e)}"
+            status_code=500, detail=f"Failed to generate formula explanation: {str(e)}"
         ) from e
 
 
@@ -802,26 +764,26 @@ def _get_optimizer_formula(optimizer: str, num_params: int) -> dict[str, str]:
     """
     num_params_formatted = f"{num_params:,}"
 
-    if optimizer in ['adam', 'adamw']:
+    if optimizer in ["adam", "adamw"]:
         return {
             "formula": f"{num_params_formatted} × 12 bytes (Adam/AdamW FP32)",
-            "description": "4 bytes FP32 params + 4 bytes momentum + 4 bytes variance"
+            "description": "4 bytes FP32 params + 4 bytes momentum + 4 bytes variance",
         }
-    elif optimizer == 'adamw_8bit':
+    elif optimizer == "adamw_8bit":
         return {
             "formula": f"{num_params_formatted} × 2 bytes (AdamW 8-bit)",
-            "description": "8-bit quantized optimizer states (2 bytes per parameter)"
+            "description": "8-bit quantized optimizer states (2 bytes per parameter)",
         }
-    elif optimizer == 'sgd':
+    elif optimizer == "sgd":
         return {
             "formula": f"{num_params_formatted} × 4 bytes (SGD)",
-            "description": "4 bytes FP32 params (no momentum for SGD)"
+            "description": "4 bytes FP32 params (no momentum for SGD)",
         }
     else:
         # Default to AdamW
         return {
             "formula": f"{num_params_formatted} × 12 bytes (Adam/AdamW FP32)",
-            "description": "4 bytes FP32 params + 4 bytes momentum + 4 bytes variance"
+            "description": "4 bytes FP32 params + 4 bytes momentum + 4 bytes variance",
         }
 
 
@@ -831,33 +793,39 @@ def _get_formula_references(engine_type: str) -> list[dict[str, str]]:
         {
             "title": "EleutherAI Transformer Math 101",
             "url": "https://blog.eleuther.ai/transformer-math/",
-            "description": "Comprehensive transformer memory breakdown with formulas"
+            "description": "Comprehensive transformer memory breakdown with formulas",
         },
         {
             "title": "Microsoft Research ZeRO Blog",
             "url": "https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/",
-            "description": "ZeRO optimization techniques and memory formulas"
+            "description": "ZeRO optimization techniques and memory formulas",
         },
     ]
 
-    if engine_type in ['deepspeed', 'megatron_deepspeed']:
-        references.append({
-            "title": "DeepSpeed Memory Documentation",
-            "url": "https://deepspeed.readthedocs.io/en/latest/memory.html",
-            "description": "Official DeepSpeed memory requirements and formulas"
-        })
-    elif engine_type == 'megatron_lm' or engine_type == 'megatron_deepspeed':
-        references.append({
-            "title": "NVIDIA Megatron-LM",
-            "url": "https://github.com/NVIDIA/Megatron-LM",
-            "description": "Megatron-LM tensor and pipeline parallelism"
-        })
-    elif engine_type == 'fsdp':
-        references.append({
-            "title": "PyTorch FSDP Documentation",
-            "url": "https://pytorch.org/docs/stable/fsdp.html",
-            "description": "PyTorch Fully Sharded Data Parallel documentation"
-        })
+    if engine_type in ["deepspeed", "megatron_deepspeed"]:
+        references.append(
+            {
+                "title": "DeepSpeed Memory Documentation",
+                "url": "https://deepspeed.readthedocs.io/en/latest/memory.html",
+                "description": "Official DeepSpeed memory requirements and formulas",
+            }
+        )
+    elif engine_type == "megatron_lm" or engine_type == "megatron_deepspeed":
+        references.append(
+            {
+                "title": "NVIDIA Megatron-LM",
+                "url": "https://github.com/NVIDIA/Megatron-LM",
+                "description": "Megatron-LM tensor and pipeline parallelism",
+            }
+        )
+    elif engine_type == "fsdp":
+        references.append(
+            {
+                "title": "PyTorch FSDP Documentation",
+                "url": "https://pytorch.org/docs/stable/fsdp.html",
+                "description": "PyTorch Fully Sharded Data Parallel documentation",
+            }
+        )
 
     return references
 
