@@ -11,6 +11,7 @@ from gpu_mem_calculator.core.models import (
     GPUConfig,
     MemoryResult,
     ModelConfig,
+    NodeConfig,
     ParallelismConfig,
     TrainingConfig,
 )
@@ -42,6 +43,7 @@ class GPUMemoryCalculator:
         parallelism_config: ParallelismConfig | None = None,
         engine_config: EngineConfig | None = None,
         gpu_config: GPUConfig | None = None,
+        node_config: NodeConfig | None = None,
     ) -> None:
         """Initialize the calculator.
 
@@ -51,12 +53,14 @@ class GPUMemoryCalculator:
             parallelism_config: Parallelism settings (default: no parallelism)
             engine_config: Training engine configuration (default: PyTorch DDP)
             gpu_config: Hardware configuration (default: 1x 80GB GPU)
+            node_config: Multi-node configuration (default: single node)
         """
         self.model_config = model_config
         self.training_config = training_config
         self.parallelism_config = parallelism_config or ParallelismConfig()
         self.engine_config = engine_config or EngineConfig()
         self.gpu_config = gpu_config or GPUConfig()
+        self.node_config = node_config or NodeConfig()
 
     def calculate(self) -> MemoryResult:
         """Calculate GPU memory requirements.
@@ -84,6 +88,7 @@ class GPUMemoryCalculator:
                     parallelism_config=self.parallelism_config,
                     engine_config=self.engine_config,
                     gpu_config=self.gpu_config,
+                    node_config=self.node_config,
                 )
             case EngineType.DEEPSPEED:
                 return DeepSpeedEngine(
@@ -92,6 +97,7 @@ class GPUMemoryCalculator:
                     parallelism_config=self.parallelism_config,
                     engine_config=self.engine_config,
                     gpu_config=self.gpu_config,
+                    node_config=self.node_config,
                 )
             case EngineType.MEGATRON_LM:
                 return MegatronLMEngine(
@@ -100,6 +106,7 @@ class GPUMemoryCalculator:
                     parallelism_config=self.parallelism_config,
                     engine_config=self.engine_config,
                     gpu_config=self.gpu_config,
+                    node_config=self.node_config,
                 )
             case EngineType.FSDP:
                 return FSDPEngine(
@@ -108,6 +115,7 @@ class GPUMemoryCalculator:
                     parallelism_config=self.parallelism_config,
                     engine_config=self.engine_config,
                     gpu_config=self.gpu_config,
+                    node_config=self.node_config,
                 )
             case EngineType.MEGATRON_DEEPSPEED:
                 return MegatronDeepSpeedEngine(
@@ -116,6 +124,7 @@ class GPUMemoryCalculator:
                     parallelism_config=self.parallelism_config,
                     engine_config=self.engine_config,
                     gpu_config=self.gpu_config,
+                    node_config=self.node_config,
                 )
             case _:
                 # Default to PyTorch DDP
@@ -125,6 +134,7 @@ class GPUMemoryCalculator:
                     parallelism_config=self.parallelism_config,
                     engine_config=self.engine_config,
                     gpu_config=self.gpu_config,
+                    node_config=self.node_config,
                 )
 
     @classmethod
@@ -164,4 +174,5 @@ class GPUMemoryCalculator:
             "parallelism": self.parallelism_config.model_dump(),
             "engine": self.engine_config.model_dump(),
             "hardware": self.gpu_config.model_dump(),
+            "multinode": self.node_config.model_dump(),
         }

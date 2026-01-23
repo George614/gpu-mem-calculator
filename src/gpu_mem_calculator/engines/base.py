@@ -8,6 +8,7 @@ from gpu_mem_calculator.core.models import (
     MemoryBreakdown,
     MemoryResult,
     ModelConfig,
+    NodeConfig,
     ParallelismConfig,
     TrainingConfig,
 )
@@ -28,6 +29,7 @@ class BaseEngine(ABC):
         parallelism_config: ParallelismConfig,
         engine_config: EngineConfig,
         gpu_config: GPUConfig,
+        node_config: NodeConfig | None = None,
     ) -> None:
         """Initialize the engine with configuration.
 
@@ -37,12 +39,14 @@ class BaseEngine(ABC):
             parallelism_config: Parallelism settings
             engine_config: Engine-specific configuration
             gpu_config: Hardware configuration
+            node_config: Multi-node configuration (optional)
         """
         self.model_config = model_config
         self.training_config = training_config
         self.parallelism_config = parallelism_config
         self.engine_config = engine_config
         self.gpu_config = gpu_config
+        self.node_config = node_config or NodeConfig()
 
     @abstractmethod
     def calculate_memory(self) -> MemoryResult:
@@ -102,14 +106,39 @@ class BaseEngine(ABC):
             total_memory_per_gpu
         )
 
+        # Calculate network overhead for multi-node configurations
+        network_overhead = None
+        multi_node_info = None
+        if self.node_config.is_multi_node:
+            from gpu_mem_calculator.core.multinode import MultiNodeCalculator
+
+            multinode_calc = MultiNodeCalculator(
+                model_config=self.model_config,
+                training_config=self.training_config,
+                parallelism_config=self.parallelism_config,
+                node_config=self.node_config,
+                engine_config=self.engine_config,
+            )
+            network_overhead = multinode_calc.calculate_network_overhead()
+
+            # Add multi-node info
+            multi_node_info = {
+                "num_nodes": self.node_config.num_nodes,
+                "gpus_per_node": self.node_config.gpus_per_node,
+                "interconnect_type": self.node_config.interconnect_type.value,
+                "interconnect_bandwidth_gbps": self.node_config.get_interconnect_bandwidth_gbps(),
+            }
+
         return MemoryResult(
             total_memory_per_gpu_gb=total_memory_per_gpu,
             total_memory_all_gpus_gb=total_memory_all_gpus,
             cpu_memory_gb=cpu_memory_gb,
             breakdown=breakdown,
+            network_overhead=network_overhead,
             fits_on_gpu=fits_on_gpu,
             memory_utilization_percent=utilization_percent,
             recommended_batch_size=recommended_batch_size,
+            multi_node_info=multi_node_info,
         )
 
     @property
