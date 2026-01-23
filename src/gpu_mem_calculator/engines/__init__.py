@@ -3,7 +3,7 @@
 from gpu_mem_calculator.engines.base import BaseEngine
 from gpu_mem_calculator.engines.deepspeed import DeepSpeedEngine
 from gpu_mem_calculator.engines.fsdp import FSDPEngine
-from gpu_mem_calculator.engines.megatron import MegatronLMEngine, MegatronDeepSpeedEngine
+from gpu_mem_calculator.engines.megatron import MegatronDeepSpeedEngine, MegatronLMEngine
 from gpu_mem_calculator.engines.pytorch import PyTorchDDPEngine
 
 __all__ = [

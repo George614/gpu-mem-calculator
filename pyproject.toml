@@ -12,6 +12,23 @@ license = {text = "MIT"}
 authors = [
     {name = "GPU Mem Calculator Team"}
 ]
+keywords = [
+    "gpu",
+    "memory",
+    "calculator",
+    "llm",
+    "large-language-model",
+    "training",
+    "deepspeed",
+    "megatron",
+    "pytorch",
+    "fsdp",
+    "transformer",
+    "machine-learning",
+    "deep-learning",
+    "distributed-training",
+    "zero-optimization",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

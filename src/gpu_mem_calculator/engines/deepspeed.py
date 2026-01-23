@@ -10,15 +10,9 @@ from gpu_mem_calculator.core.formulas import (
     estimate_largest_layer_params,
 )
 from gpu_mem_calculator.core.models import (
-    EngineConfig,
-    EngineType,
-    GPUConfig,
     MemoryBreakdown,
     MemoryResult,
-    ModelConfig,
     OffloadDevice,
-    ParallelismConfig,
-    TrainingConfig,
 )
 from gpu_mem_calculator.engines.base import BaseEngine
 from gpu_mem_calculator.utils.precision import gb_from_bytes
@@ -107,8 +101,6 @@ class DeepSpeedEngine(BaseEngine):
         """
         num_params = self.model_config.num_parameters
         num_gpus = self.total_num_gpus
-        dtype = self.training_config.dtype.value
-        optimizer = self.training_config.optimizer.value
 
         # Model parameters (fp16/bf16 on GPU)
         model_params_gb = gb_from_bytes(num_params * 2)  # FP16/BF16 = 2 bytes
@@ -168,16 +160,16 @@ class DeepSpeedEngine(BaseEngine):
         Reference: https://www.microsoft.com/en-us/research/blog/zero-deepspeed-new-system-optimizations-enable-training-models-with-over-100-billion-parameters/
 
         Memory formula:
-        - offload_optimizer=cpu: 2 * params (fp16 params) + (2 * params / num_gpus) (sharded fp16 grads)
-        - offload_optimizer=none: 2 * params (fp16 params) + 2 * params / num_gpus (sharded fp16 grads) +
+        - offload_optimizer=cpu: 2 * params (fp16 params) +
+          (2 * params / num_gpus) (sharded fp16 grads)
+        - offload_optimizer=none: 2 * params (fp16 params) +
+          2 * params / num_gpus (sharded fp16 grads) +
           12 * params / num_gpus (sharded optimizer states)
 
         Note: Unlike ZeRO-1, ZeRO-2 shards gradients across GPUs
         """
         num_params = self.model_config.num_parameters
         num_gpus = self.total_num_gpus
-        dtype = self.training_config.dtype.value
-        optimizer = self.training_config.optimizer.value
 
         # Model parameters (fp16/bf16 on GPU) - NOT sharded in ZeRO-2
         model_params_gb = gb_from_bytes(num_params * 2)  # FP16/BF16 = 2 bytes

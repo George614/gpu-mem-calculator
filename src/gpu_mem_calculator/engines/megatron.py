@@ -10,19 +10,14 @@ Reference: https://blog.eleuther.ai/transformer-math/
 
 from gpu_mem_calculator.core.formulas import (
     calculate_activation_memory,
-    calculate_overhead,
-    calculate_optimizer_memory,
-    calculate_parameter_memory,
     calculate_gradient_memory,
+    calculate_optimizer_memory,
+    calculate_overhead,
+    calculate_parameter_memory,
 )
 from gpu_mem_calculator.core.models import (
-    EngineConfig,
-    GPUConfig,
     MemoryBreakdown,
     MemoryResult,
-    ModelConfig,
-    ParallelismConfig,
-    TrainingConfig,
 )
 from gpu_mem_calculator.engines.base import BaseEngine
 from gpu_mem_calculator.utils.precision import gb_from_bytes
@@ -49,11 +44,7 @@ class MegatronLMEngine(BaseEngine):
         """
         tp_size = self.parallelism_config.tensor_parallel_size
         pp_size = self.parallelism_config.pipeline_parallel_size
-        dp_size = self.parallelism_config.data_parallel_size
         seq_parallel = self.parallelism_config.sequence_parallel
-
-        # Effective number of GPUs for model sharding
-        model_parallel_size = tp_size * pp_size
 
         # 1. Model parameters (sharded by tensor parallelism)
         # Each TP GPU holds 1/tp of the parameters
@@ -123,7 +114,6 @@ class MegatronLMEngine(BaseEngine):
         Returns:
             Activation memory in GB
         """
-        from gpu_mem_calculator.core.formulas import calculate_activation_memory
 
         # Base activation memory
         base_activations = calculate_activation_memory(
@@ -172,7 +162,6 @@ class MegatronDeepSpeedEngine(BaseEngine):
             MemoryResult with complete memory breakdown
         """
         # Import DeepSpeed engine
-        from gpu_mem_calculator.engines.deepspeed import DeepSpeedEngine
 
         # First calculate activation memory using Megatron-LM approach
         tp_size = self.parallelism_config.tensor_parallel_size
@@ -240,7 +229,6 @@ class MegatronDeepSpeedEngine(BaseEngine):
         seq_parallel: bool,
     ) -> float:
         """Calculate activation memory for Megatron-LM."""
-        from gpu_mem_calculator.core.formulas import calculate_activation_memory
 
         # Base activation memory
         base_activations = calculate_activation_memory(

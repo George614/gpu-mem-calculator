@@ -3,7 +3,6 @@
 import hashlib
 import json
 import logging
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -14,21 +13,16 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, field_validator, model_validator
 from starlette.requests import Request
 
-from gpu_mem_calculator.config.presets import load_presets, get_preset_config
+from gpu_mem_calculator.config.presets import load_presets
 from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 from gpu_mem_calculator.core.models import (
-    DType,
     EngineConfig,
-    EngineType,
     GPUConfig,
     MemoryResult,
     ModelConfig,
-    OffloadDevice,
-    OptimizerType,
     ParallelismConfig,
     TrainingConfig,
 )
-from gpu_mem_calculator.utils.precision import gb_from_bytes
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -66,7 +60,10 @@ class CalculateRequest(BaseModel):
 
     model: dict[str, Any] = Field(description="Model configuration")
     training: dict[str, Any] = Field(description="Training configuration")
-    parallelism: dict[str, Any] | None = Field(default=None, description="Parallelism configuration")
+    parallelism: dict[str, Any] | None = Field(
+        default=None,
+        description="Parallelism configuration",
+    )
     engine: dict[str, Any] | None = Field(default=None, description="Engine configuration")
     hardware: dict[str, Any] | None = Field(default=None, description="Hardware configuration")
 
@@ -302,9 +299,15 @@ async def calculate_memory(request: CalculateRequest) -> MemoryResult:
         # Parse model configuration
         model_data = request.model.copy()
         # Parse num_parameters if it's a string (e.g., "7B", "7000M")
-        if "num_parameters" in model_data and isinstance(model_data["num_parameters"], str):
+        if "num_parameters" in model_data and isinstance(
+            model_data["num_parameters"],
+            str,
+        ):
             from gpu_mem_calculator.config.parser import ConfigParser
-            model_data["num_parameters"] = ConfigParser._parse_num_params(model_data["num_parameters"])
+
+            model_data["num_parameters"] = ConfigParser._parse_num_params(
+                model_data["num_parameters"],
+            )
 
         model_config = ModelConfig(**model_data)
 
@@ -561,7 +564,6 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
             from gpu_mem_calculator.config.parser import ConfigParser
             num_params = ConfigParser._parse_num_params(num_params)
 
-        dtype = request.training.get('dtype', 'bf16')
         optimizer = request.training.get('optimizer', 'adamw')
         num_gpus = request.hardware.get('num_gpus', 1) if request.hardware else 1
         batch_size = request.training.get('batch_size', 1)
@@ -614,8 +616,12 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
 
         elif engine_type in ['deepspeed', 'megatron_deepspeed']:
             zero_stage = request.engine.get('zero_stage', 0) if request.engine else 0
-            offload_optimizer = request.engine.get('offload_optimizer', 'none') if request.engine else 'none'
-            offload_param = request.engine.get('offload_param', 'none') if request.engine else 'none'
+            offload_optimizer = (
+                request.engine.get('offload_optimizer', 'none') if request.engine else 'none'
+            )
+            offload_param = (
+                request.engine.get('offload_param', 'none') if request.engine else 'none'
+            )
 
             if zero_stage == 0:
                 stage_name = "ZeRO-0 (Baseline)"
@@ -664,9 +670,19 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                     },
                     {
                         "name": "Sharded Optimizer States",
-                        "formula": f"({_get_optimizer_formula(optimizer, num_params)['formula']}) / {num_gpus} GPUs" if offload_optimizer == 'none' else f"Offloaded to {offload_optimizer}",
+                        "formula": (
+                            (
+                                f"({_get_optimizer_formula(optimizer, num_params)['formula']}) "
+                                f"/ {num_gpus} GPUs"
+                            )
+                            if offload_optimizer == 'none'
+                            else f"Offloaded to {offload_optimizer}"
+                        ),
                         "result": f"{result.breakdown.optimizer_states_gb:.2f} GB",
-                        "description": _get_optimizer_formula(optimizer, num_params)["description"] + " (sharded or offloaded)"
+                        "description": (
+                            _get_optimizer_formula(optimizer, num_params)["description"]
+                            + " (sharded or offloaded)"
+                        ),
                     },
                 ]
             else:
@@ -680,20 +696,40 @@ async def explain_formula(request: CalculateRequest) -> dict[str, Any]:
                     },
                     {
                         "name": "Gradients",
-                        "formula": f"{num_params:,} × 2 bytes" if zero_stage < 2 else f"({num_params:,} × 2 bytes) / {num_gpus} GPUs",
+                        "formula": (
+                            f"{num_params:,} × 2 bytes"
+                            if zero_stage < 2
+                            else f"({num_params:,} × 2 bytes) / {num_gpus} GPUs"
+                        ),
                         "result": f"{result.breakdown.gradients_gb:.2f} GB",
-                        "description": "Sharded across GPUs" if zero_stage >= 2 else "Full gradients"
+                        "description": (
+                            "Sharded across GPUs" if zero_stage >= 2 else "Full gradients"
+                        ),
                     },
                     {
                         "name": "Optimizer States",
-                        "formula": f"({_get_optimizer_formula(optimizer, num_params)['formula']}) / {num_gpus} GPUs" if offload_optimizer == 'none' else f"Offloaded to {offload_optimizer}",
+                        "formula": (
+                            (
+                                f"({_get_optimizer_formula(optimizer, num_params)['formula']}) "
+                                f"/ {num_gpus} GPUs"
+                            )
+                            if offload_optimizer == 'none'
+                            else f"Offloaded to {offload_optimizer}"
+                        ),
                         "result": f"{result.breakdown.optimizer_states_gb:.2f} GB",
-                        "description": _get_optimizer_formula(optimizer, num_params)["description"] + " (sharded or offloaded)"
+                        "description": (
+                            _get_optimizer_formula(optimizer, num_params)["description"]
+                            + " (sharded or offloaded)"
+                        ),
                     },
                 ]
 
         elif engine_type == 'fsdp':
-            sharding_strategy = request.engine.get('sharding_strategy', 'full_shard') if request.engine else 'full_shard'
+            sharding_strategy = (
+                request.engine.get('sharding_strategy', 'full_shard')
+                if request.engine
+                else 'full_shard'
+            )
 
             if sharding_strategy == 'no_shard':
                 strategy_name = "No Sharding (like DDP)"

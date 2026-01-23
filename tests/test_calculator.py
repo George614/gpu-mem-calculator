@@ -1,6 +1,8 @@
 """Tests for GPU Memory Calculator."""
 
 import pytest
+
+from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 from gpu_mem_calculator.core.models import (
     DType,
     EngineConfig,
@@ -11,7 +13,6 @@ from gpu_mem_calculator.core.models import (
     ParallelismConfig,
     TrainingConfig,
 )
-from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 from gpu_mem_calculator.utils.precision import gb_from_params, get_precision_from_dtype
 
 
