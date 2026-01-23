@@ -12,10 +12,19 @@ class GPUMemCalculator {
         this.savedConfigs = []; // For comparison mode
         this.initEventListeners();
         this.initAutoCalculate();
+        this.initTabListeners();
         this.loadSavedConfigs();
     }
 
     initEventListeners() {
+        // Tab navigation
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+                this.switchTab(tabName);
+            });
+        });
+
         // Preset selection
         document.getElementById('preset-select').addEventListener('change', (e) => {
             if (e.target.value !== 'custom') {
@@ -91,9 +100,9 @@ class GPUMemCalculator {
             this.copyConfigJSON();
         });
 
-        // Show formula details button
+        // Show formula details button - use toggle approach
         document.getElementById('show-formula-btn').addEventListener('click', () => {
-            this.showFormulaExplanation();
+            this.toggleFormulaExplanation();
         });
 
         // Initialize engine fields
@@ -102,6 +111,8 @@ class GPUMemCalculator {
 
         // Store last config for formula explanation
         this.lastConfig = null;
+        // Track if formula details are currently visible
+        this.formulaDetailsVisible = false;
     }
 
     initAutoCalculate() {
@@ -230,6 +241,87 @@ class GPUMemCalculator {
             valid: errors.length === 0,
             errors: errors
         };
+    }
+
+    /**
+     * Switch between tabs
+     */
+    switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.tab === tabName) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+            content.style.display = 'none';
+        });
+
+        const activeTab = document.getElementById(`${tabName}-tab`);
+        if (activeTab) {
+            activeTab.classList.add('active');
+            activeTab.style.display = 'block';
+        }
+    }
+
+    /**
+     * Initialize tab-specific event listeners
+     */
+    initTabListeners() {
+        // Inference tab event listeners
+        const infCalcBtn = document.getElementById('inference-calculate-btn');
+        const infResetBtn = document.getElementById('inference-reset-btn');
+        if (infCalcBtn) {
+            infCalcBtn.addEventListener('click', () => this.calculateInferenceMemory());
+        }
+        if (infResetBtn) {
+            infResetBtn.addEventListener('click', () => this.resetInferenceForm());
+        }
+
+        // GPU memory utilization slider
+        const gpuMemUtilSlider = document.getElementById('gpu-memory-util');
+        const gpuMemUtilValue = document.getElementById('gpu-memory-util-value');
+        if (gpuMemUtilSlider && gpuMemUtilValue) {
+            gpuMemUtilSlider.addEventListener('input', (e) => {
+                gpuMemUtilValue.textContent = parseFloat(e.target.value).toFixed(2);
+            });
+        }
+
+        // Multi-node tab event listeners
+        const multiCalcBtn = document.getElementById('multinode-calculate-btn');
+        const multiResetBtn = document.getElementById('multinode-reset-btn');
+        if (multiCalcBtn) {
+            multiCalcBtn.addEventListener('click', () => this.calculateMultiNode());
+        }
+        if (multiResetBtn) {
+            multiResetBtn.addEventListener('click', () => this.resetMultiNodeForm());
+        }
+
+        // Update total GPUs display
+        const numNodesInput = document.getElementById('num-nodes');
+        const gpusPerNodeInput = document.getElementById('gpus-per-node');
+        const totalGpusSpan = document.getElementById('multinode-total-gpus');
+
+        const updateTotalGpus = () => {
+            if (numNodesInput && gpusPerNodeInput && totalGpusSpan) {
+                const nodes = parseInt(numNodesInput.value) || 1;
+                const gpusPerNode = parseInt(gpusPerNodeInput.value) || 8;
+                totalGpusSpan.textContent = nodes * gpusPerNode;
+            }
+        };
+
+        if (numNodesInput) numNodesInput.addEventListener('input', updateTotalGpus);
+        if (gpusPerNodeInput) gpusPerNodeInput.addEventListener('input', updateTotalGpus);
+
+        // Export framework button
+        const exportBtn = document.getElementById('export-framework-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.showExportModal());
+        }
     }
 
     /**
@@ -733,12 +825,10 @@ class GPUMemCalculator {
         });
         refsEl.innerHTML = refsHTML;
 
-        // Update button text
+        // Update button text and set visibility flag
         const btn = document.getElementById('show-formula-btn');
         btn.textContent = 'Hide Formula Details';
-        btn.onclick = () => {
-            this.hideFormulaExplanation();
-        };
+        this.formulaDetailsVisible = true;
     }
 
     hideFormulaExplanation() {
@@ -747,9 +837,22 @@ class GPUMemCalculator {
 
         const btn = document.getElementById('show-formula-btn');
         btn.textContent = 'Show Formula Details';
-        btn.onclick = () => {
-            this.showFormulaExplanation();
-        };
+        this.formulaDetailsVisible = false;
+    }
+
+    async toggleFormulaExplanation() {
+        if (!this.lastConfig) {
+            this.showError('Please run a calculation first to see the formula explanation.');
+            return;
+        }
+
+        if (this.formulaDetailsVisible) {
+            // Currently visible, hide it
+            this.hideFormulaExplanation();
+        } else {
+            // Currently hidden, show it
+            await this.showFormulaExplanation();
+        }
     }
 
     resetForm() {
@@ -847,6 +950,236 @@ class GPUMemCalculator {
         setTimeout(() => {
             errorEl.style.display = 'none';
         }, 3000);
+    }
+
+    /**
+     * Calculate inference memory
+     */
+    async calculateInferenceMemory() {
+        try {
+            const config = {
+                model: {
+                    name: document.getElementById('inference-model-name').value,
+                    num_parameters: document.getElementById('inference-num-params').value,
+                    num_layers: parseInt(document.getElementById('inference-num-layers').value),
+                    hidden_size: parseInt(document.getElementById('inference-hidden-size').value),
+                    num_attention_heads: parseInt(document.getElementById('inference-num-heads').value),
+                    vocab_size: parseInt(document.getElementById('inference-vocab-size').value),
+                    max_seq_len: parseInt(document.getElementById('inference-seq-len').value),
+                },
+                inference: {
+                    engine_type: document.getElementById('inference-engine').value,
+                    batch_size: parseInt(document.getElementById('inference-batch-size').value),
+                    kv_cache_quantization: document.getElementById('kv-cache-quantization').value,
+                    tensor_parallel_size: parseInt(document.getElementById('tensor-parallel-size').value),
+                    gpu_memory_utilization: parseFloat(document.getElementById('gpu-memory-util').value),
+                },
+                hardware: {
+                    num_gpus: parseInt(document.getElementById('inference-num-gpus').value),
+                    gpu_memory_gb: parseInt(document.getElementById('inference-gpu-model').value),
+                },
+            };
+
+            const response = await fetch(`${this.apiBase}/inference/calculate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to calculate inference memory');
+            }
+
+            const result = await response.json();
+            this.displayInferenceResults(result);
+        } catch (error) {
+            this.showError(`Error: ${error.message}`);
+        }
+    }
+
+    displayInferenceResults(result) {
+        document.getElementById('inference-result-per-gpu').textContent = `${result.total_memory_per_gpu_gb.toFixed(2)} GB`;
+        document.getElementById('inference-result-total').textContent = `${result.total_memory_all_gpus_gb.toFixed(2)} GB`;
+        document.getElementById('inference-result-params').textContent = `${result.model_params_gb.toFixed(2)} GB`;
+        document.getElementById('inference-result-kv-cache').textContent = `${result.kv_cache_gb.toFixed(2)} GB`;
+        document.getElementById('inference-result-activations').textContent = `${result.activations_gb.toFixed(2)} GB`;
+        document.getElementById('inference-max-batch').textContent = result.max_supported_batch_size || 'N/A';
+        document.getElementById('inference-throughput').textContent = `${result.estimated_throughput_tokens_per_sec.toFixed(0)} tokens/sec`;
+        document.getElementById('inference-fits').textContent = result.fits_on_gpu ? '✓ Yes' : '✗ No';
+        document.getElementById('inference-fits').style.color = result.fits_on_gpu ? 'var(--success-color)' : 'var(--danger-color)';
+        document.getElementById('inference-utilization').textContent = `${(result.utilization * 100).toFixed(1)}%`;
+    }
+
+    resetInferenceForm() {
+        document.getElementById('inference-preset-select').value = 'custom';
+        document.getElementById('inference-model-name').value = 'custom-model';
+        document.getElementById('inference-num-params').value = '7B';
+        document.getElementById('inference-num-layers').value = '32';
+        document.getElementById('inference-hidden-size').value = '4096';
+        document.getElementById('inference-num-heads').value = '32';
+        document.getElementById('inference-vocab-size').value = '32000';
+        document.getElementById('inference-seq-len').value = '4096';
+        document.getElementById('inference-batch-size').value = '32';
+        document.getElementById('kv-cache-quantization').value = 'none';
+        document.getElementById('tensor-parallel-size').value = '1';
+        document.getElementById('gpu-memory-util').value = '0.9';
+        document.getElementById('gpu-memory-util-value').textContent = '0.90';
+        document.getElementById('inference-num-gpus').value = '1';
+        document.getElementById('inference-gpu-model').value = '80';
+
+        // Clear results
+        document.getElementById('inference-result-per-gpu').textContent = '-- GB';
+        document.getElementById('inference-result-total').textContent = '-- GB';
+        document.getElementById('inference-result-params').textContent = '-- GB';
+        document.getElementById('inference-result-kv-cache').textContent = '-- GB';
+        document.getElementById('inference-result-activations').textContent = '-- GB';
+        document.getElementById('inference-max-batch').textContent = '--';
+        document.getElementById('inference-throughput').textContent = '-- tokens/sec';
+        document.getElementById('inference-fits').textContent = '--';
+        document.getElementById('inference-utilization').textContent = '--%';
+    }
+
+    /**
+     * Calculate multi-node network overhead
+     */
+    async calculateMultiNode() {
+        try {
+            const config = {
+                model: {
+                    num_parameters: document.getElementById('multinode-num-params').value,
+                },
+                training: {
+                    dtype: document.getElementById('multinode-dtype').value,
+                    batch_size: parseInt(document.getElementById('multinode-batch-size').value),
+                    seq_length: parseInt(document.getElementById('multinode-seq-len').value),
+                },
+                parallelism: {
+                    tensor_parallel_size: parseInt(document.getElementById('multinode-tensor-pp').value),
+                    pipeline_parallel_size: parseInt(document.getElementById('multinode-pipeline-pp').value),
+                    sequence_parallel: document.getElementById('multinode-seq-parallel').checked,
+                },
+                engine: {
+                    type: document.getElementById('multinode-engine').value,
+                    zero_stage: parseInt(document.getElementById('multinode-zero-stage').value),
+                },
+                node_config: {
+                    num_nodes: parseInt(document.getElementById('num-nodes').value),
+                    gpus_per_node: parseInt(document.getElementById('gpus-per-node').value),
+                    interconnect_type: document.getElementById('interconnect-type').value,
+                },
+                optimize_strategy: document.getElementById('multinode-optimize').checked,
+            };
+
+            const response = await fetch(`${this.apiBase}/multinode/calculate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to calculate multi-node overhead');
+            }
+
+            const result = await response.json();
+            this.displayMultiNodeResults(result);
+        } catch (error) {
+            this.showError(`Error: ${error.message}`);
+        }
+    }
+
+    displayMultiNodeResults(result) {
+        const overhead = result.network_overhead;
+        document.getElementById('multinode-overhead-total').textContent = `${overhead.total_overhead_gb.toFixed(2)} GB`;
+        document.getElementById('multinode-overhead-allreduce').textContent = `${overhead.allreduce_gb.toFixed(2)} GB`;
+        document.getElementById('multinode-overhead-allgather').textContent = `${overhead.allgather_gb.toFixed(2)} GB`;
+        document.getElementById('multinode-overhead-reducescatter').textContent = `${overhead.reducescatter_gb?.toFixed(2) || '0.00'} GB`;
+        document.getElementById('multinode-overhead-pipeline').textContent = `${overhead.pipeline_gb?.toFixed(2) || '0.00'} GB`;
+        document.getElementById('multinode-time-overhead').textContent = `${overhead.estimated_overhead_ms_per_step?.toFixed(2) || 'N/A'} ms/step`;
+        document.getElementById('multinode-comm-time').textContent = `${overhead.communication_time_ms_per_step?.toFixed(2) || 'N/A'} ms/step`;
+        document.getElementById('multinode-latency').textContent = `${overhead.latency_overhead_ms?.toFixed(2) || 'N/A'} ms`;
+
+        // Display suggestions
+        const suggestionsDiv = document.getElementById('multinode-suggestions');
+        if (result.suggestions && result.suggestions.length > 0) {
+            suggestionsDiv.innerHTML = '<ul>' + result.suggestions.map(s => `<li>${s}</li>`).join('') + '</ul>';
+        } else {
+            suggestionsDiv.innerHTML = '<p>No optimization suggestions available.</p>';
+        }
+    }
+
+    resetMultiNodeForm() {
+        document.getElementById('multinode-preset-select').value = 'custom';
+        document.getElementById('multinode-num-params').value = '7B';
+        document.getElementById('multinode-dtype').value = 'bf16';
+        document.getElementById('num-nodes').value = '2';
+        document.getElementById('gpus-per-node').value = '8';
+        document.getElementById('multinode-total-gpus').textContent = '16';
+        document.getElementById('interconnect-type').value = 'infiniband';
+        document.getElementById('multinode-engine').value = 'deepspeed';
+        document.getElementById('multinode-zero-stage').value = '3';
+        document.getElementById('multinode-batch-size').value = '4';
+        document.getElementById('multinode-seq-len').value = '4096';
+        document.getElementById('multinode-tensor-pp').value = '1';
+        document.getElementById('multinode-pipeline-pp').value = '1';
+        document.getElementById('multinode-seq-parallel').checked = false;
+        document.getElementById('multinode-optimize').checked = true;
+
+        // Clear results
+        document.getElementById('multinode-overhead-total').textContent = '-- GB';
+        document.getElementById('multinode-overhead-allreduce').textContent = '-- GB';
+        document.getElementById('multinode-overhead-allgather').textContent = '-- GB';
+        document.getElementById('multinode-overhead-reducescatter').textContent = '-- GB';
+        document.getElementById('multinode-overhead-pipeline').textContent = '-- GB';
+        document.getElementById('multinode-time-overhead').textContent = '-- ms/step';
+        document.getElementById('multinode-comm-time').textContent = '-- ms/step';
+        document.getElementById('multinode-latency').textContent = '-- ms';
+        document.getElementById('multinode-suggestions').innerHTML = '<p>Run calculation to see optimization suggestions.</p>';
+    }
+
+    /**
+     * Show export framework modal
+     */
+    showExportModal() {
+        const format = prompt('Select export format:\n1 - Accelerate\n2 - Lightning\n3 - Axolotl\n4 - DeepSpeed\n5 - YAML\n6 - JSON\n\nEnter number (1-6):');
+
+        if (!format) return;
+
+        const formatMap = {
+            '1': 'accelerate',
+            '2': 'lightning',
+            '3': 'axolotl',
+            '4': 'deepspeed',
+            '5': 'yaml',
+            '6': 'json',
+        };
+
+        const selectedFormat = formatMap[format];
+        if (!selectedFormat) {
+            this.showError('Invalid format selected');
+            return;
+        }
+
+        this.exportFrameworkConfig(selectedFormat);
+    }
+
+    async exportFrameworkConfig(format) {
+        try {
+            const config = this.collectFormData();
+            const response = await fetch(`${this.apiBase}/export/${format}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to export ${format} config`);
+            }
+
+            const result = await response.json();
+            this.downloadConfig(result, format);
+        } catch (error) {
+            this.showError(`Error: ${error.message}`);
+        }
     }
 }
 

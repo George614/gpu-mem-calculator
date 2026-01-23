@@ -18,11 +18,18 @@ from gpu_mem_calculator.core.calculator import GPUMemoryCalculator
 from gpu_mem_calculator.core.models import (
     EngineConfig,
     GPUConfig,
+    InferenceConfig,
+    InferenceEngineType,
+    InterconnectType,
     MemoryResult,
     ModelConfig,
+    NodeConfig,
     ParallelismConfig,
     TrainingConfig,
 )
+from gpu_mem_calculator.inference.calculator import InferenceMemoryCalculator
+from gpu_mem_calculator.core.multinode import MultiNodeCalculator
+from gpu_mem_calculator.exporters.manager import ExportManager, ExportFormat
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -828,6 +835,259 @@ def _get_formula_references(engine_type: str) -> list[dict[str, str]]:
         )
 
     return references
+
+
+@app.post("/api/inference/calculate")
+async def calculate_inference_memory(request: dict[str, Any]) -> dict[str, Any]:
+    """Calculate GPU memory requirements for inference.
+
+    Args:
+        request: Dictionary with model, inference, and hardware configs
+
+    Returns:
+        Inference memory result with breakdown
+    """
+    try:
+        model_data = request.get("model", {})
+        inference_data = request.get("inference", {})
+        hardware_data = request.get("hardware", {})
+
+        # Parse num_parameters if it's a string
+        if "num_parameters" in model_data and isinstance(model_data["num_parameters"], str):
+            from gpu_mem_calculator.config.parser import ConfigParser
+            model_data["num_parameters"] = ConfigParser._parse_num_params(model_data["num_parameters"])
+
+        # Create model config
+        model_config = ModelConfig(**model_data)
+
+        # Create inference config
+        kv_cache_quantization = inference_data.get("kv_cache_quantization", "none")
+        if isinstance(kv_cache_quantization, str):
+            from gpu_mem_calculator.core.models import KVCacheQuantization
+            kv_cache_quantization = KVCacheQuantization(kv_cache_quantization)
+
+        inference_config = InferenceConfig(
+            batch_size=inference_data.get("batch_size", 1),
+            kv_cache_quantization=kv_cache_quantization,
+            use_kv_cache=inference_data.get("use_kv_cache", True),
+            tensor_parallel_size=inference_data.get("tensor_parallel_size", 1),
+            gpu_memory_utilization=inference_data.get("gpu_memory_utilization", 0.9),
+        )
+
+        # Create GPU config
+        gpu_config = GPUConfig(
+            num_gpus=hardware_data.get("num_gpus", 1),
+            gpu_memory_gb=hardware_data.get("gpu_memory_gb", 80),
+        )
+
+        # Get engine type
+        engine_type_str = inference_data.get("engine_type", "huggingface")
+        engine_type_map = {
+            "huggingface": InferenceEngineType.HUGGINGFACE,
+            "vllm": InferenceEngineType.VLLM,
+            "tgi": InferenceEngineType.TGI,
+            "tensorrt_llm": InferenceEngineType.TENSORRT_LLM,
+        }
+        engine_type = engine_type_map.get(engine_type_str, InferenceEngineType.HUGGINGFACE)
+
+        # Calculate inference memory
+        calculator = InferenceMemoryCalculator(model_config, inference_config, gpu_config)
+        result = calculator.calculate(engine_type)
+
+        return {
+            "total_memory_per_gpu_gb": result.total_memory_per_gpu_gb,
+            "total_memory_all_gpus_gb": result.total_memory_all_gpus_gb,
+            "model_params_gb": result.model_params_gb,
+            "kv_cache_gb": result.kv_cache_gb,
+            "activations_gb": result.activations_gb,
+            "max_supported_batch_size": result.max_supported_batch_size,
+            "estimated_throughput_tokens_per_sec": result.estimated_throughput_tokens_per_sec,
+            "fits_on_gpu": result.fits_on_gpu,
+            "utilization": result.utilization,
+        }
+
+    except Exception as e:
+        logger.error(f"Inference calculation error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate inference memory: {str(e)}"
+        ) from e
+
+
+@app.post("/api/multinode/calculate")
+async def calculate_multinode(request: dict[str, Any]) -> dict[str, Any]:
+    """Calculate network overhead for multi-node training.
+
+    Args:
+        request: Dictionary with model, training, parallelism, engine, and node configs
+
+    Returns:
+        Network overhead result with suggestions
+    """
+    try:
+        model_data = request.get("model", {})
+        training_data = request.get("training", {})
+        parallelism_data = request.get("parallelism", {})
+        engine_data = request.get("engine", {})
+        node_data = request.get("node_config", {})
+        optimize_strategy = request.get("optimize_strategy", True)
+
+        # Parse num_parameters if it's a string
+        if "num_parameters" in model_data and isinstance(model_data["num_parameters"], str):
+            from gpu_mem_calculator.config.parser import ConfigParser
+            model_data["num_parameters"] = ConfigParser._parse_num_params(model_data["num_parameters"])
+
+        # Create minimal configs for multi-node calculation
+        model_config = ModelConfig(
+            name="multinode-model",
+            num_parameters=model_data.get("num_parameters", 7_000_000_000),
+            num_layers=32,
+            hidden_size=4096,
+        )
+
+        training_config = TrainingConfig(
+            dtype=training_data.get("dtype", "bf16"),
+            batch_size=training_data.get("batch_size", 4),
+            seq_length=training_data.get("seq_length", 4096),
+        )
+
+        parallelism_config = ParallelismConfig(
+            tensor_parallel_size=parallelism_data.get("tensor_parallel_size", 1),
+            pipeline_parallel_size=parallelism_data.get("pipeline_parallel_size", 1),
+            sequence_parallel=parallelism_data.get("sequence_parallel", False),
+        )
+
+        engine_config = EngineConfig(
+            type=engine_data.get("type", "deepspeed"),
+            zero_stage=engine_data.get("zero_stage", 3),
+        )
+
+        interconnect_type_str = node_data.get("interconnect_type", "infiniband")
+        interconnect_map = {
+            "infiniband": InterconnectType.INFINIBAND,
+            "nvlink": InterconnectType.NVLINK,
+            "ethernet_200g": InterconnectType.ETHERNET_200G,
+            "ethernet_100g": InterconnectType.ETHERNET_100G,
+            "ethernet_25g": InterconnectType.ETHERNET_25G,
+            "ethernet_10g": InterconnectType.ETHERNET_10G,
+        }
+        interconnect_type = interconnect_map.get(interconnect_type_str, InterconnectType.INFINIBAND)
+
+        node_config = NodeConfig(
+            num_nodes=node_data.get("num_nodes", 2),
+            gpus_per_node=node_data.get("gpus_per_node", 8),
+            interconnect_type=interconnect_type,
+        )
+
+        # Calculate network overhead
+        calculator = MultiNodeCalculator(
+            model_config=model_config,
+            training_config=training_config,
+            parallelism_config=parallelism_config,
+            node_config=node_config,
+            engine_config=engine_config,
+        )
+
+        overhead = calculator.calculate_network_overhead()
+
+        # Generate optimization suggestions
+        suggestions = []
+        if overhead.total_overhead_gb > 10:
+            suggestions.append("Consider reducing tensor parallelism to lower AllGather overhead")
+        if overhead.estimated_overhead_ms_per_step and overhead.estimated_overhead_ms_per_step > 50:
+            suggestions.append(f"High communication overhead ({overhead.estimated_overhead_ms_per_step:.1f}ms/step). Consider upgrading interconnect or reducing model size.")
+        if interconnect_type_str.startswith("ethernet") and node_config.num_nodes > 2:
+            suggestions.append("Ethernet interconnect detected. For multi-node training, consider InfiniBand for better performance.")
+
+        return {
+            "network_overhead": {
+                "total_overhead_gb": overhead.total_overhead_gb,
+                "allreduce_gb": overhead.allreduce_gb,
+                "allgather_gb": overhead.allgather_gb,
+                "reducescatter_gb": overhead.reducescatter_gb,
+                "pipeline_gb": overhead.pipeline_gb,
+                "estimated_overhead_ms_per_step": overhead.estimated_overhead_ms_per_step,
+                "communication_time_ms_per_step": overhead.communication_time_ms_per_step,
+                "latency_overhead_ms": overhead.latency_overhead_ms,
+            },
+            "suggestions": suggestions,
+        }
+
+    except Exception as e:
+        logger.error(f"Multi-node calculation error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate multi-node overhead: {str(e)}"
+        ) from e
+
+
+@app.post("/api/export/{format}")
+async def export_framework_config(format: str, request: CalculateRequest) -> dict[str, Any]:
+    """Export configuration to framework-specific format.
+
+    Args:
+        format: Export format (accelerate, lightning, axolotl, deepspeed, yaml, json)
+        request: Calculation request with all configurations
+
+    Returns:
+        Exported configuration file content
+    """
+    try:
+        # Parse configurations
+        model_data = request.model.copy()
+        if "num_parameters" in model_data and isinstance(model_data["num_parameters"], str):
+            from gpu_mem_calculator.config.parser import ConfigParser
+            model_data["num_parameters"] = ConfigParser._parse_num_params(model_data["num_parameters"])
+
+        model_config = ModelConfig(**model_data)
+        training_config = TrainingConfig(**request.training)
+        parallelism_config = (
+            ParallelismConfig(**request.parallelism) if request.parallelism else ParallelismConfig()
+        )
+        engine_config = EngineConfig(**request.engine) if request.engine else EngineConfig()
+
+        # Create minimal node config (not used for single-node export)
+        node_config = NodeConfig(num_nodes=1, gpus_per_node=8)
+
+        # Map format string to ExportFormat enum
+        format_map = {
+            "accelerate": ExportFormat.ACCELERATE,
+            "lightning": ExportFormat.LIGHTNING,
+            "axolotl": ExportFormat.AXOLOTL,
+            "deepspeed": ExportFormat.DEEPSPEED,
+            "yaml": ExportFormat.YAML,
+            "json": ExportFormat.JSON,
+        }
+
+        export_format = format_map.get(format.lower())
+        if not export_format:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported export format: {format}. Supported: {list(format_map.keys())}"
+            )
+
+        # Export configuration
+        manager = ExportManager(
+            model_config=model_config,
+            training_config=training_config,
+            parallelism_config=parallelism_config,
+            engine_config=engine_config,
+            node_config=node_config,
+        )
+
+        result = manager.export(export_format)
+
+        return {
+            "format": format,
+            "content": result,
+            "filename": f"config_{format}.{result.get('extension', 'txt')}" if isinstance(result, dict) else f"config.{format}",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Export error ({format}): {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to export {format} config: {str(e)}"
+        ) from e
 
 
 def main() -> None:

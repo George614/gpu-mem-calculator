@@ -10,13 +10,22 @@
     <div class="container">
         <header>
             <h1>🚀 GPU Memory Calculator</h1>
-            <p class="subtitle">For Large Language Model Training</p>
+            <p class="subtitle">For LLM Training, Inference, and Multi-Node Optimization</p>
         </header>
 
+        <!-- Tab Navigation -->
+        <nav class="tab-navigation">
+            <button class="tab-btn active" data-tab="training">🎓 Training</button>
+            <button class="tab-btn" data-tab="inference">🚀 Inference</button>
+            <button class="tab-btn" data-tab="multinode">🌐 Multi-Node</button>
+        </nav>
+
         <div class="main-content">
+            <!-- Training Tab -->
+            <div id="training-tab" class="tab-content active">
             <!-- Configuration Panel -->
             <div class="config-panel">
-                <h2>Configuration</h2>
+                <h2>Training Configuration</h2>
 
                 <!-- Model Settings -->
                 <section class="config-section">
@@ -432,8 +441,358 @@
                 <div class="button-group">
                     <button id="save-config-btn" class="btn-secondary">Save Config</button>
                     <button id="copy-json-btn" class="btn-secondary">Copy JSON</button>
+                    <button id="export-framework-btn" class="btn-secondary">⬇️ Export Framework Config</button>
                 </div>
             </div>
+            </div><!-- End Training Tab -->
+
+            <!-- Inference Tab -->
+            <div id="inference-tab" class="tab-content" style="display:none;">
+                <div class="config-panel">
+                    <h2>Inference Configuration</h2>
+
+                    <!-- Model Settings -->
+                    <section class="config-section">
+                        <h3>Model Settings</h3>
+                        <div class="form-group">
+                            <label for="inference-preset-select">Preset Model:</label>
+                            <select id="inference-preset-select">
+                                <option value="custom">Custom</option>
+                                <optgroup label="Dense Models">
+                                    <option value="llama2-7b">LLaMA 2 7B</option>
+                                    <option value="llama2-13b">LLaMA 2 13B</option>
+                                    <option value="llama2-70b">LLaMA 2 70B</option>
+                                    <option value="gpt3-175b">GPT-3 175B</option>
+                                </optgroup>
+                                <optgroup label="MoE Models">
+                                    <option value="mixtral-8x7b">Mixtral 8x7B (MoE)</option>
+                                    <option value="glm-4-9b">GLM-4 9B (MoE)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="inference-model-name">Model Name:</label>
+                                <input type="text" id="inference-model-name" value="custom-model">
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-num-params">Parameters:</label>
+                                <input type="text" id="inference-num-params" value="7B" placeholder="e.g., 7B">
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-num-layers">Layers:</label>
+                                <input type="number" id="inference-num-layers" value="32" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-hidden-size">Hidden Size:</label>
+                                <input type="number" id="inference-hidden-size" value="4096" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-num-heads">Attention Heads:</label>
+                                <input type="number" id="inference-num-heads" value="32" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-vocab-size">Vocab Size:</label>
+                                <input type="number" id="inference-vocab-size" value="32000" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-seq-len">Max Seq Length:</label>
+                                <input type="number" id="inference-seq-len" value="4096" min="1">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Inference Settings -->
+                    <section class="config-section">
+                        <h3>Inference Settings</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="inference-engine" data-tooltip="Inference engine to use">Inference Engine:</label>
+                                <select id="inference-engine">
+                                    <option value="huggingface">HuggingFace Transformers</option>
+                                    <option value="vllm" selected>vLLM (Recommended)</option>
+                                    <option value="tgi">TGI (HuggingFace TGI)</option>
+                                    <option value="tensorrt_llm">TensorRT-LLM</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-batch-size">Batch Size:</label>
+                                <input type="number" id="inference-batch-size" value="32" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="kv-cache-quantization" data-tooltip="KV cache quantization type">KV Cache Quantization:</label>
+                                <select id="kv-cache-quantization">
+                                    <option value="none" selected>NONE (FP16)</option>
+                                    <option value="int8">INT8 (2x compression)</option>
+                                    <option value="fp8">FP8 (4x compression)</option>
+                                    <option value="int4">INT4 (8x compression)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tensor-parallel-size" data-tooltip="Number of GPUs for tensor parallelism">Tensor Parallel Size:</label>
+                                <input type="number" id="tensor-parallel-size" value="1" min="1" max="8">
+                            </div>
+                            <div class="form-group">
+                                <label for="gpu-memory-util" data-tooltip="GPU memory utilization (0.0-1.0)">GPU Memory Utilization:</label>
+                                <input type="range" id="gpu-memory-util" min="0.5" max="0.95" step="0.05" value="0.9">
+                                <span id="gpu-memory-util-value">0.90</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-gpu-model">GPU Model:</label>
+                                <select id="inference-gpu-model">
+                                    <option value="24">RTX 4090 - 24GB</option>
+                                    <option value="32">V100 - 32GB</option>
+                                    <option value="40">A100 - 40GB</option>
+                                    <option value="80" selected>A100 - 80GB / H100 - 80GB</option>
+                                    <option value="141">H200 - 141GB</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="inference-num-gpus">Number of GPUs:</label>
+                                <input type="number" id="inference-num-gpus" value="1" min="1">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Calculate Button -->
+                    <div class="button-group">
+                        <button id="inference-calculate-btn" class="btn-primary">Calculate Inference Memory</button>
+                        <button id="inference-reset-btn" class="btn-secondary">Reset</button>
+                    </div>
+                </div>
+
+                <!-- Inference Results Panel -->
+                <div class="results-panel">
+                    <h2>Inference Results</h2>
+
+                    <div class="result-card">
+                        <h3>Memory Breakdown</h3>
+                        <div class="metric">
+                            <span class="metric-label">Per GPU:</span>
+                            <span class="metric-value" id="inference-result-per-gpu">-- GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Total All GPUs:</span>
+                            <span class="metric-value" id="inference-result-total">-- GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Model Parameters:</span>
+                            <span class="metric-value" id="inference-result-params">-- GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">KV Cache:</span>
+                            <span class="metric-value" id="inference-result-kv-cache">-- GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Activations:</span>
+                            <span class="metric-value" id="inference-result-activations">-- GB</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>Performance Estimates</h3>
+                        <div class="metric">
+                            <span class="metric-label">Max Batch Size:</span>
+                            <span class="metric-value" id="inference-max-batch">--</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Estimated Throughput:</span>
+                            <span class="metric-value" id="inference-throughput">-- tokens/sec</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Fits on GPU:</span>
+                            <span class="metric-value" id="inference-fits">--</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Utilization:</span>
+                            <span class="metric-value" id="inference-utilization">--%</span>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- End Inference Tab -->
+
+            <!-- Multi-Node Tab -->
+            <div id="multinode-tab" class="tab-content" style="display:none;">
+                <div class="config-panel">
+                    <h2>Multi-Node Training Configuration</h2>
+                    <p class="info-text">Calculate network communication overhead for distributed training across multiple nodes.</p>
+
+                    <!-- Model Settings -->
+                    <section class="config-section">
+                        <h3>Model Settings</h3>
+                        <div class="form-group">
+                            <label for="multinode-preset-select">Preset Model:</label>
+                            <select id="multinode-preset-select">
+                                <option value="custom">Custom</option>
+                                <option value="llama2-7b">LLaMA 2 7B</option>
+                                <option value="llama2-70b">LLaMA 2 70B</option>
+                                <option value="gpt3-175b">GPT-3 175B</option>
+                            </select>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="multinode-num-params">Parameters:</label>
+                                <input type="text" id="multinode-num-params" value="7B" placeholder="e.g., 7B">
+                            </div>
+                            <div class="form-group">
+                                <label for="multinode-dtype">Precision:</label>
+                                <select id="multinode-dtype">
+                                    <option value="bf16" selected>BF16</option>
+                                    <option value="fp16">FP16</option>
+                                    <option value="fp32">FP32</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Node Configuration -->
+                    <section class="config-section">
+                        <h3>Node Configuration</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="num-nodes">Number of Nodes:</label>
+                                <input type="number" id="num-nodes" value="2" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="gpus-per-node">GPUs per Node:</label>
+                                <input type="number" id="gpus-per-node" value="8" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="interconnect-type" data-tooltip="Network interconnect between nodes">Interconnect Type:</label>
+                                <select id="interconnect-type">
+                                    <option value="infiniband" selected>InfiniBand (200 Gbps)</option>
+                                    <option value="nvlink">NVLink (900 Gbps)</option>
+                                    <option value="ethernet_200g">Ethernet 200G</option>
+                                    <option value="ethernet_100g">Ethernet 100G</option>
+                                    <option value="ethernet_25g">Ethernet 25G</option>
+                                    <option value="ethernet_10g">Ethernet 10G</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="info-text">Total GPUs: <span id="multinode-total-gpus">16</span></p>
+                    </section>
+
+                    <!-- Training Configuration -->
+                    <section class="config-section">
+                        <h3>Training Configuration</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="multinode-engine">Training Engine:</label>
+                                <select id="multinode-engine">
+                                    <option value="pytorch_ddp">PyTorch DDP</option>
+                                    <option value="deepspeed" selected>DeepSpeed ZeRO</option>
+                                    <option value="megatron_lm">Megatron-LM</option>
+                                    <option value="fsdp">PyTorch FSDP</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="multinode-zero-stage-group">
+                                <label for="multinode-zero-stage">ZeRO Stage:</label>
+                                <select id="multinode-zero-stage">
+                                    <option value="1">1: Shard optimizer states</option>
+                                    <option value="2">2: Shard optimizer + gradients</option>
+                                    <option value="3" selected>3: Shard everything</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="multinode-batch-size">Batch Size per GPU:</label>
+                                <input type="number" id="multinode-batch-size" value="4" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="multinode-seq-len">Sequence Length:</label>
+                                <input type="number" id="multinode-seq-len" value="4096" min="1">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Parallelism Settings -->
+                    <section class="config-section">
+                        <h3>Parallelism Strategy</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="multinode-tensor-pp">Tensor Parallel:</label>
+                                <input type="number" id="multinode-tensor-pp" value="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="multinode-pipeline-pp">Pipeline Parallel:</label>
+                                <input type="number" id="multinode-pipeline-pp" value="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="multinode-seq-parallel">
+                                    <input type="checkbox" id="multinode-seq-parallel">
+                                    Enable Sequence Parallel
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="multinode-optimize">
+                                    <input type="checkbox" id="multinode-optimize" checked>
+                                    Auto-optimize Strategy
+                                </label>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Calculate Button -->
+                    <div class="button-group">
+                        <button id="multinode-calculate-btn" class="btn-primary">Calculate Network Overhead</button>
+                        <button id="multinode-reset-btn" class="btn-secondary">Reset</button>
+                    </div>
+                </div>
+
+                <!-- Multi-Node Results Panel -->
+                <div class="results-panel">
+                    <h2>Multi-Node Results</h2>
+
+                    <div class="result-card">
+                        <h3>Network Overhead</h3>
+                        <div class="metric">
+                            <span class="metric-label">Total Overhead:</span>
+                            <span class="metric-value" id="multinode-overhead-total">-- GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">AllReduce:</span>
+                            <span class="metric-value" id="multinode-overhead-allreduce">-- GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">AllGather:</span>
+                            <span class="metric-value" id="multinode-overhead-allgather">-- GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">ReduceScatter:</span>
+                            <span class="metric-value" id="multinode-overhead-reducescatter">-- GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Pipeline Comm:</span>
+                            <span class="metric-value" id="multinode-overhead-pipeline">-- GB</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>Time Impact</h3>
+                        <div class="metric">
+                            <span class="metric-label">Est. Overhead:</span>
+                            <span class="metric-value" id="multinode-time-overhead">-- ms/step</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Communication Time:</span>
+                            <span class="metric-value" id="multinode-comm-time">-- ms/step</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Latency Impact:</span>
+                            <span class="metric-value" id="multinode-latency">-- ms</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>Optimization Suggestions</h3>
+                        <div id="multinode-suggestions">
+                            <p>Run calculation to see optimization suggestions.</p>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- End Multi-Node Tab -->
+
         </div>
 
         <div id="error-message" class="error-message" style="display:none"></div>
