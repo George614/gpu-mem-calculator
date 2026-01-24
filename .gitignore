@@ -47,12 +47,14 @@ coverage.xml
 
 # Claude
 .claude/
+.mcp.json
 
 # Virtual environments
 venv/
 env/
 ENV/
 .venv/
+.env
 
 # IDEs
 .vscode/
