@@ -12,12 +12,13 @@ from gpu_mem_calculator.core.models import (
     ModelConfig,
 )
 from gpu_mem_calculator.inference.huggingface import HuggingFaceEngine
+from gpu_mem_calculator.inference.sglang import SGLangEngine
 from gpu_mem_calculator.inference.tensorrt_llm import TensorRTLLMEngine
 from gpu_mem_calculator.inference.tgi import TGIEngine
 from gpu_mem_calculator.inference.vllm import VLLMEngine
 
 # Type alias for inference engine types
-InferenceEngineAlias = HuggingFaceEngine | VLLMEngine | TGIEngine | TensorRTLLMEngine
+InferenceEngineAlias = HuggingFaceEngine | VLLMEngine | TGIEngine | TensorRTLLMEngine | SGLangEngine
 
 
 class InferenceMemoryCalculator:
@@ -89,6 +90,12 @@ class InferenceMemoryCalculator:
                 )
             case InferenceEngineType.TENSORRT_LLM | InferenceEngineType.TRTLLM:
                 return TensorRTLLMEngine(
+                    model_config=self.model_config,
+                    inference_config=self.inference_config,
+                    gpu_config=self.gpu_config,
+                )
+            case InferenceEngineType.SGLANG:
+                return SGLangEngine(
                     model_config=self.model_config,
                     inference_config=self.inference_config,
                     gpu_config=self.gpu_config,

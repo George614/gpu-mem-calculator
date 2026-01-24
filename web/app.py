@@ -877,6 +877,39 @@ async def calculate_inference_memory(request: dict[str, Any]) -> dict[str, Any]:
             use_kv_cache=inference_data.get("use_kv_cache", True),
             tensor_parallel_size=inference_data.get("tensor_parallel_size", 1),
             gpu_memory_utilization=inference_data.get("gpu_memory_utilization", 0.9),
+            enable_streaming=inference_data.get("enable_streaming", False),
+            # TGI-specific parameters
+            max_total_tokens=inference_data.get("max_total_tokens"),
+            max_input_tokens=inference_data.get("max_input_tokens"),
+            max_batch_total_tokens=inference_data.get("max_batch_total_tokens"),
+            tgi_quantize=inference_data.get("tgi_quantize", "none"),
+            tgi_dtype=inference_data.get("tgi_dtype", "bfloat16"),
+            sharded=inference_data.get("sharded", False),
+            num_shard=inference_data.get("num_shard"),
+            # vLLM-specific parameters
+            block_size=inference_data.get("block_size"),
+            swap_space_gb=inference_data.get("swap_space_gb", 0.0),
+            enable_prefix_caching=inference_data.get("enable_prefix_caching", False),
+            enforce_eager=inference_data.get("enforce_eager", False),
+            max_num_batched_tokens=inference_data.get("max_num_batched_tokens"),
+            max_num_seqs=inference_data.get("max_num_seqs"),
+            vllm_quantization=inference_data.get("vllm_quantization", "none"),
+            # TensorRT-LLM-specific parameters
+            trt_max_batch_size=inference_data.get("trt_max_batch_size"),
+            trt_max_input_len=inference_data.get("trt_max_input_len"),
+            trt_max_seq_len=inference_data.get("trt_max_seq_len"),
+            trt_max_beam_width=inference_data.get("trt_max_beam_width"),
+            # SGLang-specific parameters
+            chunk_size=inference_data.get("chunk_size"),
+            max_running_requests=inference_data.get("max_running_requests"),
+            disable_radix_cache=inference_data.get("disable_radix_cache", False),
+            enable_p2p=inference_data.get("enable_p2p", False),
+            disable_custom_all_reduce=inference_data.get("disable_custom_all_reduce", False),
+            attention_backend=inference_data.get("attention_backend", "flashinfer"),
+            enable_torch_compile=inference_data.get("enable_torch_compile", False),
+            radix_cache_max_seq_len=inference_data.get("radix_cache_max_seq_len"),
+            speculative_algo=inference_data.get("speculative_algo", "default"),
+            multi_lora_enabled=inference_data.get("multi_lora_enabled", False),
         )
 
         # Create GPU config
@@ -892,6 +925,7 @@ async def calculate_inference_memory(request: dict[str, Any]) -> dict[str, Any]:
             "vllm": InferenceEngineType.VLLM,
             "tgi": InferenceEngineType.TGI,
             "tensorrt_llm": InferenceEngineType.TENSORRT_LLM,
+            "sglang": InferenceEngineType.SGLANG,
         }
         engine_type = engine_type_map.get(engine_type_str, InferenceEngineType.HUGGINGFACE)
 
@@ -902,13 +936,16 @@ async def calculate_inference_memory(request: dict[str, Any]) -> dict[str, Any]:
         return {
             "total_memory_per_gpu_gb": result.total_memory_per_gpu_gb,
             "total_memory_all_gpus_gb": result.total_memory_all_gpus_gb,
-            "model_params_gb": result.breakdown.model_params_gb,
-            "kv_cache_gb": result.breakdown.kv_cache_gb,
-            "activations_gb": result.breakdown.activations_gb,
+            "breakdown": {
+                "model_params_gb": result.breakdown.model_params_gb,
+                "kv_cache_gb": result.breakdown.kv_cache_gb,
+                "activations_gb": result.breakdown.activations_gb,
+                "overhead_gb": result.breakdown.overhead_gb,
+            },
             "max_supported_batch_size": result.max_supported_batch_size,
             "estimated_throughput_tokens_per_sec": result.estimated_throughput_tokens_per_sec,
             "fits_on_gpu": result.fits_on_gpu,
-            "utilization": result.memory_utilization_percent / 100.0,  # Convert % to fraction
+            "memory_utilization_percent": result.memory_utilization_percent,
         }
 
     except Exception as e:

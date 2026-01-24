@@ -663,7 +663,7 @@ If you use this tool in your research, please cite:
 @software{gpu_mem_calculator,
   title = {GPU Memory Calculator for LLM Training},
   author = {GPU Mem Calculator Team},
-  year = {2024},
+  year = {2026},
   url = {https://github.com/George614/gpu-mem-calculator}
 }
 ```

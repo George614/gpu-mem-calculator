@@ -299,6 +299,16 @@ class GPUMemCalculator {
             });
         }
 
+        // Inference engine dropdown - show/hide engine-specific sections
+        const infEngineSelect = document.getElementById('inference-engine');
+        if (infEngineSelect) {
+            infEngineSelect.addEventListener('change', (e) => {
+                this.updateInferenceEngineFields(e.target.value);
+            });
+            // Initialize with default engine
+            this.updateInferenceEngineFields(infEngineSelect.value);
+        }
+
         // Multi-node tab event listeners
         const multiCalcBtn = document.getElementById('multinode-calculate-btn');
         const multiResetBtn = document.getElementById('multinode-reset-btn');
@@ -632,6 +642,39 @@ class GPUMemCalculator {
 
         document.getElementById('total-experts-display').textContent = numExperts;
         document.getElementById('active-experts-display').textContent = topK;
+    }
+
+    updateInferenceEngineFields(engineType) {
+        const tgiSettings = document.getElementById('tgi-settings');
+        const vllmSettings = document.getElementById('vllm-settings');
+        const tensorrtSettings = document.getElementById('tensorrt-settings');
+        const sglangSettings = document.getElementById('sglang-settings');
+
+        // Hide all engine-specific sections first
+        if (tgiSettings) tgiSettings.style.display = 'none';
+        if (vllmSettings) vllmSettings.style.display = 'none';
+        if (tensorrtSettings) tensorrtSettings.style.display = 'none';
+        if (sglangSettings) sglangSettings.style.display = 'none';
+
+        // Show relevant section based on engine type
+        switch (engineType) {
+            case 'tgi':
+                if (tgiSettings) tgiSettings.style.display = 'block';
+                break;
+            case 'vllm':
+                if (vllmSettings) vllmSettings.style.display = 'block';
+                break;
+            case 'tensorrt_llm':
+                if (tensorrtSettings) tensorrtSettings.style.display = 'block';
+                break;
+            case 'sglang':
+                if (sglangSettings) sglangSettings.style.display = 'block';
+                break;
+            case 'huggingface':
+            default:
+                // No additional settings for HuggingFace
+                break;
+        }
     }
 
     collectFormData() {
@@ -1001,6 +1044,22 @@ class GPUMemCalculator {
      */
     async calculateInferenceMemory() {
         try {
+            // Helper function to get value or null if empty
+            const getValOrNull = (id) => {
+                const val = document.getElementById(id).value;
+                return val === '' ? null : val;
+            };
+
+            const getIntOrNull = (id) => {
+                const val = document.getElementById(id).value;
+                return val === '' ? null : parseInt(val);
+            };
+
+            const getFloatOrNull = (id) => {
+                const val = document.getElementById(id).value;
+                return val === '' ? null : parseFloat(val);
+            };
+
             const config = {
                 model: {
                     name: document.getElementById('inference-model-name').value,
@@ -1017,6 +1076,39 @@ class GPUMemCalculator {
                     kv_cache_quantization: document.getElementById('kv-cache-quantization').value,
                     tensor_parallel_size: parseInt(document.getElementById('tensor-parallel-size').value),
                     gpu_memory_utilization: parseFloat(document.getElementById('gpu-memory-util').value),
+                    use_kv_cache: document.getElementById('use-kv-cache').checked,
+                    // TGI-specific
+                    max_total_tokens: getIntOrNull('max-total-tokens'),
+                    max_input_tokens: getIntOrNull('max-input-tokens'),
+                    max_batch_total_tokens: getIntOrNull('max-batch-total-tokens'),
+                    tgi_quantize: getValOrNull('tgi-quantize') || 'none',
+                    tgi_dtype: getValOrNull('tgi-dtype') || 'bfloat16',
+                    sharded: document.getElementById('sharded').checked,
+                    num_shard: getIntOrNull('num-shard'),
+                    // vLLM-specific
+                    block_size: getIntOrNull('block-size'),
+                    swap_space_gb: getFloatOrNull('swap-space-gb') || 0.0,
+                    enable_prefix_caching: document.getElementById('enable-prefix-caching').checked,
+                    enforce_eager: document.getElementById('enforce-eager').checked,
+                    max_num_batched_tokens: getIntOrNull('max-num-batched-tokens'),
+                    max_num_seqs: getIntOrNull('max-num-seqs'),
+                    vllm_quantization: getValOrNull('vllm-quantization') || 'none',
+                    // TensorRT-LLM-specific
+                    trt_max_batch_size: getIntOrNull('trt-max-batch-size'),
+                    trt_max_input_len: getIntOrNull('trt-max-input-len'),
+                    trt_max_seq_len: getIntOrNull('trt-max-seq-len'),
+                    trt_max_beam_width: getIntOrNull('trt-max-beam-width'),
+                    // SGLang-specific
+                    chunk_size: getIntOrNull('chunk-size'),
+                    max_running_requests: getIntOrNull('max-running-requests'),
+                    disable_radix_cache: document.getElementById('disable-radix-cache').checked,
+                    enable_p2p: document.getElementById('enable-p2p').checked,
+                    disable_custom_all_reduce: document.getElementById('disable-custom-all-reduce').checked,
+                    attention_backend: getValOrNull('attention-backend') || 'flashinfer',
+                    enable_torch_compile: document.getElementById('enable-torch-compile').checked,
+                    radix_cache_max_seq_len: getIntOrNull('radix-cache-max-seq-len'),
+                    speculative_algo: getValOrNull('speculative-algo') || 'default',
+                    multi_lora_enabled: document.getElementById('multi-lora-enabled').checked,
                 },
                 hardware: {
                     num_gpus: parseInt(document.getElementById('inference-num-gpus').value),
@@ -1044,16 +1136,16 @@ class GPUMemCalculator {
     displayInferenceResults(result) {
         document.getElementById('inference-result-per-gpu').textContent = `${result.total_memory_per_gpu_gb.toFixed(2)} GB`;
         document.getElementById('inference-result-total').textContent = `${result.total_memory_all_gpus_gb.toFixed(2)} GB`;
-        document.getElementById('inference-result-params').textContent = `${result.model_params_gb.toFixed(2)} GB`;
-        document.getElementById('inference-result-kv-cache').textContent = `${result.kv_cache_gb.toFixed(2)} GB`;
-        document.getElementById('inference-result-activations').textContent = `${result.activations_gb.toFixed(2)} GB`;
+        document.getElementById('inference-result-params').textContent = `${result.breakdown.model_params_gb.toFixed(2)} GB`;
+        document.getElementById('inference-result-kv-cache').textContent = `${result.breakdown.kv_cache_gb.toFixed(2)} GB`;
+        document.getElementById('inference-result-activations').textContent = `${result.breakdown.activations_gb.toFixed(2)} GB`;
         document.getElementById('inference-max-batch').textContent = result.max_supported_batch_size || 'N/A';
         document.getElementById('inference-throughput').textContent = result.estimated_throughput_tokens_per_sec
             ? `${result.estimated_throughput_tokens_per_sec.toFixed(0)} tokens/sec`
             : 'N/A';
         document.getElementById('inference-fits').textContent = result.fits_on_gpu ? '✓ Yes' : '✗ No';
         document.getElementById('inference-fits').style.color = result.fits_on_gpu ? 'var(--success-color)' : 'var(--danger-color)';
-        document.getElementById('inference-utilization').textContent = `${(result.utilization * 100).toFixed(1)}%`;
+        document.getElementById('inference-utilization').textContent = `${result.memory_utilization_percent.toFixed(1)}%`;
     }
 
     resetInferenceForm() {
@@ -1072,6 +1164,43 @@ class GPUMemCalculator {
         document.getElementById('gpu-memory-util-value').textContent = '0.90';
         document.getElementById('inference-num-gpus').value = '1';
         document.getElementById('inference-gpu-model').value = '80';
+        document.getElementById('use-kv-cache').checked = true;
+
+        // Reset TGI-specific fields
+        document.getElementById('max-total-tokens').value = '4096';
+        document.getElementById('max-input-tokens').value = '2048';
+        document.getElementById('max-batch-total-tokens').value = '8192';
+        document.getElementById('tgi-quantize').value = 'none';
+        document.getElementById('tgi-dtype').value = 'bfloat16';
+        document.getElementById('sharded').checked = false;
+        document.getElementById('num-shard').value = '1';
+
+        // Reset vLLM-specific fields
+        document.getElementById('block-size').value = '';
+        document.getElementById('swap-space-gb').value = '0';
+        document.getElementById('enable-prefix-caching').checked = false;
+        document.getElementById('enforce-eager').checked = false;
+        document.getElementById('max-num-batched-tokens').value = '';
+        document.getElementById('max-num-seqs').value = '';
+        document.getElementById('vllm-quantization').value = 'none';
+
+        // Reset TensorRT-LLM-specific fields
+        document.getElementById('trt-max-batch-size').value = '2048';
+        document.getElementById('trt-max-input-len').value = '1024';
+        document.getElementById('trt-max-seq-len').value = '2048';
+        document.getElementById('trt-max-beam-width').value = '1';
+
+        // Reset SGLang-specific fields
+        document.getElementById('chunk-size').value = '8192';
+        document.getElementById('max-running-requests').value = '128';
+        document.getElementById('radix-cache-max-seq-len').value = '8192';
+        document.getElementById('attention-backend').value = 'flashinfer';
+        document.getElementById('speculative-algo').value = 'default';
+        document.getElementById('disable-radix-cache').checked = false;
+        document.getElementById('enable-p2p').checked = false;
+        document.getElementById('disable-custom-all-reduce').checked = false;
+        document.getElementById('enable-torch-compile').checked = false;
+        document.getElementById('multi-lora-enabled').checked = false;
 
         // Clear results
         document.getElementById('inference-result-per-gpu').textContent = '-- GB';
@@ -1083,6 +1212,10 @@ class GPUMemCalculator {
         document.getElementById('inference-throughput').textContent = '-- tokens/sec';
         document.getElementById('inference-fits').textContent = '--';
         document.getElementById('inference-utilization').textContent = '--%';
+
+        // Reset engine-specific sections visibility
+        const engineType = document.getElementById('inference-engine').value;
+        this.updateInferenceEngineFields(engineType);
     }
 
     /**

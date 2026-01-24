@@ -8,11 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- 🚀 **Inference Memory Calculation**: Support for HuggingFace, vLLM, TGI, TensorRT-LLM inference engines
+- 🚀 **Inference Memory Calculation**: Support for HuggingFace, vLLM, TGI, TensorRT-LLM, SGLang inference engines
   - KV cache quantization (NONE, INT8, FP8, INT4)
   - Tensor parallelism for distributed inference
   - Throughput estimation and batch size optimization
   - Memory feasibility analysis for inference workloads
+  - Engine-specific configuration parameters:
+    - **TGI**: max_total_tokens, max_input_tokens, max_batch_total_tokens, tgi_quantize, tgi_dtype, sharded, num_shard
+    - **vLLM**: block_size, swap_space_gb, enable_prefix_caching, enforce_eager, max_num_batched_tokens, max_num_seqs, vllm_quantization
+    - **TensorRT-LLM**: trt_max_batch_size, trt_max_input_len, trt_max_seq_len, trt_max_beam_width
+    - **SGLang**: chunk_size, max_running_requests, disable_radix_cache, enable_p2p, attention_backend, enable_torch_compile, radix_cache_max_seq_len, speculative_algo, multi_lora_enabled
+  - SGLang RadixAttention memory optimization with tree-based KV cache sharing
+  - Chunked prefill and speculative decoding support for SGLang
 - 🌐 **Multi-Node Training**: Network overhead calculation and hybrid parallelism optimization
   - AllReduce, AllGather, ReduceScatter, pipeline communication estimation
   - Interconnect support (InfiniBand, NVLink, Ethernet 10G/25G/100G/200G)
@@ -24,17 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Axolotl YAML config for fine-tuning
   - DeepSpeed config export
   - Generic YAML/JSON export
-- 🧪 **Comprehensive Test Suite**: 191 tests with 95% coverage on new modules
-  - Inference engine tests (71 tests)
+- 🧪 **Comprehensive Test Suite**: 239 tests with 95% coverage on new modules
+  - Training calculator tests (48 tests)
+  - Inference engine tests (97 tests)
   - Multi-node calculator tests (50 tests)
-  - Exporter tests (70 tests)
+  - Exporter tests (44 tests)
 
 ### Changed
 - Updated README with new feature documentation and API examples
 - Updated FAQ with inference, multi-node, and exporter information
 - Updated Getting Started guide with new feature examples
 
-## [0.1.0] - 2024
+## [0.1.0] - 2026
 
 ### Added
 - Initial release of GPU Memory Calculator

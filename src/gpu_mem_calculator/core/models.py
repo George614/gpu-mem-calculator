@@ -27,6 +27,7 @@ class InferenceEngineType(str, Enum):
     TGI = "tgi"
     TENSORRT_LLM = "tensorrt_llm"
     TRTLLM = "trtllm"
+    SGLANG = "sglang"
 
 
 class OptimizerType(str, Enum):
@@ -406,19 +407,147 @@ class InferenceConfig(BaseModel):
     use_kv_cache: bool = Field(default=True, description="Enable KV cache for generation")
     tensor_parallel_size: int = Field(default=1, ge=1, description="Tensor parallelism degree")
     enable_streaming: bool = Field(default=False, description="Enable streaming inference")
-    # vLLM-specific options
-    block_size: int | None = Field(
-        default=None,
-        ge=1,
-        description="Block size for vLLM KV cache management (default: 16)",
-    )
+
+    # Common inference options
     gpu_memory_utilization: float = Field(
         default=0.9,
         gt=0.0,
         le=1.0,
         description="GPU memory utilization target (0.0-1.0)",
     )
-    swap_space_gb: float = Field(default=0.0, ge=0.0, description="CPU swap space in GB")
+
+    # TGI-specific options
+    max_total_tokens: int | None = Field(
+        default=None,
+        gt=0,
+        description="TGI: Maximum total tokens (input + output) - defines memory budget",
+    )
+    max_input_tokens: int | None = Field(
+        default=None,
+        gt=0,
+        description="TGI: Maximum input tokens",
+    )
+    max_batch_total_tokens: int | None = Field(
+        default=None,
+        gt=0,
+        description="TGI: Maximum total tokens across all batches",
+    )
+    tgi_quantize: Literal[
+        "none",
+        "awq",
+        "eetq",
+        "exl2",
+        "gptq",
+        "marlin",
+        "bitsandbytes",
+        "bitsandbytes-nf4",
+        "bitsandbytes-fp4",
+        "fp8",
+    ] = Field(
+        default="none",
+        description="TGI: Weight quantization method",
+    )
+    tgi_dtype: Literal["float16", "bfloat16"] = Field(
+        default="bfloat16",
+        description="TGI: Data type for inference",
+    )
+    sharded: bool = Field(default=False, description="TGI: Enable sharded inference")
+    num_shard: int | None = Field(
+        default=None,
+        ge=1,
+        description="TGI: Number of shards for sharded inference",
+    )
+
+    # vLLM-specific options
+    block_size: int | None = Field(
+        default=None,
+        ge=1,
+        description="vLLM: Block size for KV cache management (default: 16)",
+    )
+    swap_space_gb: float = Field(default=0.0, ge=0.0, description="vLLM: CPU swap space in GB")
+    enable_prefix_caching: bool = Field(default=False, description="vLLM: Enable prefix caching")
+    enforce_eager: bool = Field(
+        default=False,
+        description="vLLM: Enable eager mode (disable CUDA graph)",
+    )
+    max_num_batched_tokens: int | None = Field(
+        default=None,
+        gt=0,
+        description="vLLM: Maximum number of batched tokens",
+    )
+    max_num_seqs: int | None = Field(
+        default=None,
+        gt=0,
+        description="vLLM: Maximum number of sequences in a batch",
+    )
+    vllm_quantization: Literal["none", "awq", "gptq", "squeezellm", "fp8"] = Field(
+        default="none",
+        description="vLLM: Weight quantization method",
+    )
+
+    # TensorRT-LLM-specific options
+    trt_max_batch_size: int | None = Field(
+        default=None,
+        gt=0,
+        description="TensorRT-LLM: Maximum batch size",
+    )
+    trt_max_input_len: int | None = Field(
+        default=None,
+        gt=0,
+        description="TensorRT-LLM: Maximum input length",
+    )
+    trt_max_seq_len: int | None = Field(
+        default=None,
+        gt=0,
+        description="TensorRT-LLM: Maximum sequence length",
+    )
+    trt_max_beam_width: int | None = Field(
+        default=None,
+        ge=1,
+        description="TensorRT-LLM: Maximum beam width for beam search",
+    )
+
+    # SGLang-specific options
+    chunk_size: int | None = Field(
+        default=None,
+        ge=1,
+        description="SGLang: Prefill chunk size for long contexts (default: 8192)",
+    )
+    max_running_requests: int | None = Field(
+        default=None,
+        ge=1,
+        description="SGLang: Maximum number of concurrent requests",
+    )
+    disable_radix_cache: bool = Field(
+        default=False,
+        description="SGLang: Disable RadixAttention cache (for debugging)",
+    )
+    enable_p2p: bool = Field(
+        default=False,
+        description="SGLang: Enable P2P attention for multi-GPU",
+    )
+    disable_custom_all_reduce: bool = Field(
+        default=False,
+        description="SGLang: Disable custom all-reduce kernel",
+    )
+    attention_backend: Literal["flashinfer", "triton", "torch"] = Field(
+        default="flashinfer",
+        description="SGLang: Attention backend implementation",
+    )
+    enable_torch_compile: bool = Field(
+        default=False,
+        description="SGLang: Enable torch.compile for model optimization",
+    )
+    radix_cache_max_seq_len: int | None = Field(
+        default=None,
+        gt=0,
+        description="SGLang: Maximum sequence length for RadixCache",
+    )
+    speculative_algo: Literal["default", "medusa", "eagle"] = Field(
+        default="default",
+        description="SGLang: Speculative decoding algorithm",
+    )
+    multi_lora_enabled: bool = Field(default=False, description="SGLang: Enable multi-LoRA serving")
 
 
 class InferenceMemoryResult(BaseModel):

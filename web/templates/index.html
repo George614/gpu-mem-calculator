@@ -518,6 +518,7 @@
                                     <option value="vllm" selected>vLLM (Recommended)</option>
                                     <option value="tgi">TGI (HuggingFace TGI)</option>
                                     <option value="tensorrt_llm">TensorRT-LLM</option>
+                                    <option value="sglang">SGLang</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -555,6 +556,186 @@
                             <div class="form-group">
                                 <label for="inference-num-gpus">Number of GPUs:</label>
                                 <input type="number" id="inference-num-gpus" value="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="use-kv-cache">Enable KV Cache:</label>
+                                <input type="checkbox" id="use-kv-cache" checked>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- TGI-specific Settings -->
+                    <section class="config-section" id="tgi-settings" style="display:none;">
+                        <h3>TGI-Specific Settings</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="max-total-tokens" data-tooltip="Most important: defines memory budget (input + output)">Max Total Tokens:</label>
+                                <input type="number" id="max-total-tokens" value="4096" min="1" placeholder="e.g., 4096">
+                            </div>
+                            <div class="form-group">
+                                <label for="max-input-tokens">Max Input Tokens:</label>
+                                <input type="number" id="max-input-tokens" value="2048" min="1" placeholder="e.g., 2048">
+                            </div>
+                            <div class="form-group">
+                                <label for="max-batch-total-tokens">Max Batch Total Tokens:</label>
+                                <input type="number" id="max-batch-total-tokens" value="8192" min="1" placeholder="e.g., 8192">
+                            </div>
+                            <div class="form-group">
+                                <label for="tgi-quantize">Weight Quantization:</label>
+                                <select id="tgi-quantize">
+                                    <option value="none" selected>NONE</option>
+                                    <option value="awq">AWQ</option>
+                                    <option value="eetq">EETQ</option>
+                                    <option value="exl2">EXL2</option>
+                                    <option value="gptq">GPTQ</option>
+                                    <option value="marlin">Marlin</option>
+                                    <option value="bitsandbytes">BitsAndBytes (8-bit)</option>
+                                    <option value="bitsandbytes-nf4">BitsAndBytes NF4</option>
+                                    <option value="bitsandbytes-fp4">BitsAndBytes FP4</option>
+                                    <option value="fp8">FP8</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tgi-dtype">Data Type:</label>
+                                <select id="tgi-dtype">
+                                    <option value="float16">Float16</option>
+                                    <option value="bfloat16" selected>BFloat16</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="sharded">Enable Sharded:</label>
+                                <input type="checkbox" id="sharded">
+                            </div>
+                            <div class="form-group">
+                                <label for="num-shard">Number of Shards:</label>
+                                <input type="number" id="num-shard" value="1" min="1" placeholder="Auto if empty">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- vLLM-specific Settings -->
+                    <section class="config-section" id="vllm-settings" style="display:none;">
+                        <h3>vLLM-Specific Settings</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="block-size" data-tooltip="Block size for paged KV cache (default: 16)">Block Size:</label>
+                                <select id="block-size">
+                                    <option value="">Auto (16)</option>
+                                    <option value="1">1</option>
+                                    <option value="8">8</option>
+                                    <option value="16" selected>16</option>
+                                    <option value="32">32</option>
+                                    <option value="64">64</option>
+                                    <option value="128">128</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="swap-space-gb">CPU Swap Space (GB):</label>
+                                <input type="number" id="swap-space-gb" value="0" min="0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="enable-prefix-caching">Enable Prefix Caching:</label>
+                                <input type="checkbox" id="enable-prefix-caching">
+                            </div>
+                            <div class="form-group">
+                                <label for="enforce-eager">Enable Eager Mode:</label>
+                                <input type="checkbox" id="enforce-eager">
+                            </div>
+                            <div class="form-group">
+                                <label for="max-num-batched-tokens">Max Batched Tokens:</label>
+                                <input type="number" id="max-num-batched-tokens" placeholder="Auto if empty">
+                            </div>
+                            <div class="form-group">
+                                <label for="max-num-seqs">Max Sequences per Batch:</label>
+                                <input type="number" id="max-num-seqs" placeholder="Auto if empty">
+                            </div>
+                            <div class="form-group">
+                                <label for="vllm-quantization">Weight Quantization:</label>
+                                <select id="vllm-quantization">
+                                    <option value="none" selected>NONE</option>
+                                    <option value="awq">AWQ</option>
+                                    <option value="gptq">GPTQ</option>
+                                    <option value="squeezellm">SqueezeLLM</option>
+                                    <option value="fp8">FP8</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- TensorRT-LLM-specific Settings -->
+                    <section class="config-section" id="tensorrt-settings" style="display:none;">
+                        <h3>TensorRT-LLM-Specific Settings</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="trt-max-batch-size">Max Batch Size:</label>
+                                <input type="number" id="trt-max-batch-size" value="2048" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="trt-max-input-len">Max Input Length:</label>
+                                <input type="number" id="trt-max-input-len" value="1024" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="trt-max-seq-len">Max Sequence Length:</label>
+                                <input type="number" id="trt-max-seq-len" value="2048" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="trt-max-beam-width">Max Beam Width:</label>
+                                <input type="number" id="trt-max-beam-width" value="1" min="1">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- SGLang-specific Settings -->
+                    <section class="config-section" id="sglang-settings" style="display:none;">
+                        <h3>SGLang-Specific Settings</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="chunk-size" data-tooltip="Prefill chunk size for long contexts (default: 8192)">Chunk Size:</label>
+                                <input type="number" id="chunk-size" value="8192" min="1" placeholder="e.g., 8192">
+                            </div>
+                            <div class="form-group">
+                                <label for="max-running-requests" data-tooltip="Maximum number of concurrent requests">Max Running Requests:</label>
+                                <input type="number" id="max-running-requests" value="128" min="1" placeholder="e.g., 128">
+                            </div>
+                            <div class="form-group">
+                                <label for="radix-cache-max-seq-len" data-tooltip="Maximum sequence length for RadixCache">RadixCache Max Seq Len:</label>
+                                <input type="number" id="radix-cache-max-seq-len" value="8192" min="1" placeholder="e.g., 8192">
+                            </div>
+                            <div class="form-group">
+                                <label for="attention-backend" data-tooltip="Attention backend implementation">Attention Backend:</label>
+                                <select id="attention-backend">
+                                    <option value="flashinfer" selected>FlashInfer</option>
+                                    <option value="triton">Triton</option>
+                                    <option value="torch">Torch</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="speculative-algo" data-tooltip="Speculative decoding algorithm">Speculative Algorithm:</label>
+                                <select id="speculative-algo">
+                                    <option value="default" selected>Default</option>
+                                    <option value="medusa">Medusa</option>
+                                    <option value="eagle">EAGLE</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="disable-radix-cache">Disable RadixCache:</label>
+                                <input type="checkbox" id="disable-radix-cache">
+                            </div>
+                            <div class="form-group">
+                                <label for="enable-p2p">Enable P2P Attention:</label>
+                                <input type="checkbox" id="enable-p2p">
+                            </div>
+                            <div class="form-group">
+                                <label for="disable-custom-all-reduce">Disable Custom All-Reduce:</label>
+                                <input type="checkbox" id="disable-custom-all-reduce">
+                            </div>
+                            <div class="form-group">
+                                <label for="enable-torch-compile">Enable torch.compile:</label>
+                                <input type="checkbox" id="enable-torch-compile">
+                            </div>
+                            <div class="form-group">
+                                <label for="multi-lora-enabled">Enable Multi-LoRA:</label>
+                                <input type="checkbox" id="multi-lora-enabled">
                             </div>
                         </div>
                     </section>
