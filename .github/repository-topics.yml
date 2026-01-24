@@ -15,7 +15,6 @@ technologies:
   - deepspeed
   - megatron-lm
   - pytorch-fsdp
-  - transformers
   - nvidia-gpu
   - cuda
 
