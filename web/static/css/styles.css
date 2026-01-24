@@ -92,18 +92,18 @@ header h1 {
 }
 
 .tab-content.active {
-    display: block;
-}
-
-.main-content {
     display: grid;
     grid-template-columns: 1fr 400px;
     gap: 20px;
     align-items: start;
 }
 
+.main-content {
+    display: contents;
+}
+
 @media (max-width: 1024px) {
-    .main-content {
+    .tab-content.active {
         grid-template-columns: 1fr;
     }
 }
