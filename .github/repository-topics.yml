@@ -1,0 +1,134 @@
+# GitHub Repository Topics for SEO Optimization
+# These topics should be added to the repository via GitHub's web interface
+# or using the GitHub API to improve discoverability and search rankings.
+
+# Primary Topics (Most Important - Focus on Core Functionality)
+primary:
+  - gpu-memory-calculator
+  - llm-training
+  - deep-learning
+  - machine-learning
+  - pytorch
+
+# Technology & Framework Topics
+technologies:
+  - deepspeed
+  - megatron-lm
+  - pytorch-fsdp
+  - transformers
+  - nvidia-gpu
+  - cuda
+
+# Use Case Topics
+use_cases:
+  - memory-optimization
+  - distributed-training
+  - model-training
+  - ai-infrastructure
+  - gpu-computing
+
+# Model & Architecture Topics
+models:
+  - large-language-models
+  - llm
+  - transformer-models
+  - gpt
+  - llama
+
+# Optimization & Performance Topics
+optimization:
+  - zero-optimization
+  - tensor-parallelism
+  - pipeline-parallelism
+  - data-parallelism
+  - mixed-precision
+
+# Developer Tools Topics
+tools:
+  - developer-tools
+  - calculator
+  - web-ui
+  - cli-tool
+  - python-library
+
+# Research & Academic Topics
+research:
+  - nlp
+  - natural-language-processing
+  - ai-research
+  - ml-ops
+
+# Additional SEO Topics
+seo:
+  - gpu-vram
+  - oom-errors
+  - memory-estimation
+  - training-optimization
+  - inference-optimization
+
+# Recommended Final List (Max 20 topics for GitHub)
+# Listed in priority order for maximum SEO impact:
+recommended_topics:
+  1. llm-training
+  2. gpu-memory-calculator
+  3. deep-learning
+  4. pytorch
+  5. deepspeed
+  6. large-language-models
+  7. machine-learning
+  8. transformer-models
+  9. distributed-training
+  10. memory-optimization
+  11. megatron-lm
+  12. zero-optimization
+  13. pytorch-fsdp
+  14. llm
+  15. gpu-computing
+  16. tensor-parallelism
+  17. ai-infrastructure
+  18. developer-tools
+  19. nlp
+  20. model-training
+
+# Instructions for applying these topics:
+# ========================================
+# 
+# Method 1: Via GitHub Web Interface (Recommended)
+# -------------------------------------------------
+# 1. Go to https://github.com/George614/gpu-mem-calculator
+# 2. Click the gear icon (⚙️) next to "About" section
+# 3. Add topics from the recommended_topics list above
+# 4. Save changes
+#
+# Method 2: Via GitHub CLI (if GH_TOKEN is available)
+# ---------------------------------------------------
+# gh repo edit George614/gpu-mem-calculator --add-topic "llm-training,gpu-memory-calculator,deep-learning,pytorch,deepspeed,large-language-models,machine-learning,transformer-models,distributed-training,memory-optimization,megatron-lm,zero-optimization,pytorch-fsdp,llm,gpu-computing,tensor-parallelism,ai-infrastructure,developer-tools,nlp,model-training"
+#
+# Method 3: Via GitHub API
+# ------------------------
+# curl -X PUT -H "Authorization: token YOUR_TOKEN" \
+#   -H "Accept: application/vnd.github.v3+json" \
+#   https://api.github.com/repos/George614/gpu-mem-calculator/topics \
+#   -d '{"names":["llm-training","gpu-memory-calculator","deep-learning","pytorch","deepspeed","large-language-models","machine-learning","transformer-models","distributed-training","memory-optimization","megatron-lm","zero-optimization","pytorch-fsdp","llm","gpu-computing","tensor-parallelism","ai-infrastructure","developer-tools","nlp","model-training"]}'
+
+# SEO Benefits:
+# =============
+# - Improved discoverability in GitHub search
+# - Better ranking for relevant search queries
+# - Increased visibility in GitHub Explore
+# - Enhanced topic page presence
+# - Better matching with developer interests
+# - Improved cross-linking with related repositories
+
+# Topic Selection Rationale:
+# ==========================
+# 1. llm-training: Core functionality, high search volume
+# 2. gpu-memory-calculator: Unique identifier, brand building
+# 3. deep-learning & machine-learning: Broad category reach
+# 4. pytorch, deepspeed, megatron-lm: Framework-specific targeting
+# 5. large-language-models, transformer-models: Model architecture focus
+# 6. distributed-training, memory-optimization: Problem-solution keywords
+# 7. zero-optimization, tensor-parallelism: Technical optimization terms
+# 8. gpu-computing, ai-infrastructure: Infrastructure & deployment
+# 9. developer-tools: Tool category classification
+# 10. nlp, model-training: Application domain targeting
