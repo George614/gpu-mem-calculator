@@ -10,7 +10,7 @@ A versatile Python application for calculating GPU memory requirements for train
 📖 **[Getting Started Guide](docs/GETTING_STARTED.md)** | 💬 **[FAQ](docs/FAQ.md)** | 🤝 **[Contributing](CONTRIBUTING.md)**
 
 <p align="center">
-  <img src="screenshot.png" alt="GPU Memory Calculator Screenshot" width="800">
+  <img src="docs/screenshot.png" alt="GPU Memory Calculator Screenshot" width="800">
 </p>
 
 ## 🚀 Why Use This Tool?
@@ -36,7 +36,7 @@ Whether you're training a 7B parameter model on a single GPU or a 175B model acr
 - ⚙️ **Easy Config**: JSON-based configuration files with human-readable parameter formats (e.g., "7B", "7000M")
 
 ### 🆕 Inference Memory Calculation
-- 🚀 **Multi-Engine Support**: HuggingFace Transformers, vLLM, TGI, TensorRT-LLM
+- 🚀 **Multi-Engine Support**: HuggingFace Transformers, vLLM, TGI, TensorRT-LLM, SGLang
 - 💾 **KV Cache Optimization**: Quantization options (NONE, INT8, FP8, INT4)
 - 🔄 **Tensor Parallelism**: Automatic memory distribution across GPUs
 - 📈 **Throughput Estimation**: Tokens/second estimates for capacity planning
