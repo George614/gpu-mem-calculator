@@ -464,9 +464,13 @@
                                     <option value="llama2-70b">LLaMA 2 70B</option>
                                     <option value="gpt3-175b">GPT-3 175B</option>
                                 </optgroup>
-                                <optgroup label="MoE Models">
-                                    <option value="mixtral-8x7b">Mixtral 8x7B (MoE)</option>
+                                <optgroup label="MoE (Mixture of Experts) Models">
+                                    <option value="glm-4.7-355b">GLM-4.7 355B (MoE) ⭐ Latest</option>
+                                    <option value="glm-4.5-air-106b">GLM-4.5 Air 106B (MoE) ⭐ Air</option>
                                     <option value="glm-4-9b">GLM-4 9B (MoE)</option>
+                                    <option value="mixtral-8x7b">Mixtral 8x7B (MoE)</option>
+                                    <option value="qwen1.5-moe-a2.7b">Qwen1.5-MoE-A2.7B</option>
+                                    <option value="deepseek-moe-16b">DeepSeek-MoE 16B</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -625,9 +629,20 @@
                             <label for="multinode-preset-select">Preset Model:</label>
                             <select id="multinode-preset-select">
                                 <option value="custom">Custom</option>
-                                <option value="llama2-7b">LLaMA 2 7B</option>
-                                <option value="llama2-70b">LLaMA 2 70B</option>
-                                <option value="gpt3-175b">GPT-3 175B</option>
+                                <optgroup label="Dense Models">
+                                    <option value="llama2-7b">LLaMA 2 7B</option>
+                                    <option value="llama2-13b">LLaMA 2 13B</option>
+                                    <option value="llama2-70b">LLaMA 2 70B</option>
+                                    <option value="gpt3-175b">GPT-3 175B</option>
+                                </optgroup>
+                                <optgroup label="MoE (Mixture of Experts) Models">
+                                    <option value="glm-4.7-355b">GLM-4.7 355B (MoE) ⭐ Latest</option>
+                                    <option value="glm-4.5-air-106b">GLM-4.5 Air 106B (MoE) ⭐ Air</option>
+                                    <option value="glm-4-9b">GLM-4 9B (MoE)</option>
+                                    <option value="mixtral-8x7b">Mixtral 8x7B (MoE)</option>
+                                    <option value="qwen1.5-moe-a2.7b">Qwen1.5-MoE-A2.7B</option>
+                                    <option value="deepseek-moe-16b">DeepSeek-MoE 16B</option>
+                                </optgroup>
                             </select>
                         </div>
 
