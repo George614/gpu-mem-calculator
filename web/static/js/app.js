@@ -275,11 +275,19 @@ class GPUMemCalculator {
         // Inference tab event listeners
         const infCalcBtn = document.getElementById('inference-calculate-btn');
         const infResetBtn = document.getElementById('inference-reset-btn');
+        const infPresetSelect = document.getElementById('inference-preset-select');
         if (infCalcBtn) {
             infCalcBtn.addEventListener('click', () => this.calculateInferenceMemory());
         }
         if (infResetBtn) {
             infResetBtn.addEventListener('click', () => this.resetInferenceForm());
+        }
+        if (infPresetSelect) {
+            infPresetSelect.addEventListener('change', (e) => {
+                if (e.target.value !== 'custom') {
+                    this.loadInferencePreset(e.target.value);
+                }
+            });
         }
 
         // GPU memory utilization slider
@@ -294,11 +302,19 @@ class GPUMemCalculator {
         // Multi-node tab event listeners
         const multiCalcBtn = document.getElementById('multinode-calculate-btn');
         const multiResetBtn = document.getElementById('multinode-reset-btn');
+        const multiPresetSelect = document.getElementById('multinode-preset-select');
         if (multiCalcBtn) {
             multiCalcBtn.addEventListener('click', () => this.calculateMultiNode());
         }
         if (multiResetBtn) {
             multiResetBtn.addEventListener('click', () => this.resetMultiNodeForm());
+        }
+        if (multiPresetSelect) {
+            multiPresetSelect.addEventListener('change', (e) => {
+                if (e.target.value !== 'custom') {
+                    this.loadMultiNodePreset(e.target.value);
+                }
+            });
         }
 
         // Update total GPUs display
@@ -416,6 +432,34 @@ class GPUMemCalculator {
 
             const config = await response.json();
             this.applyConfig(config);
+        } catch (error) {
+            this.showError(`Failed to load preset: ${error.message}`);
+        }
+    }
+
+    async loadInferencePreset(presetName) {
+        try {
+            const response = await fetch(`${this.apiBase}/preset/${presetName}`);
+            if (!response.ok) {
+                throw new Error(`Failed to load preset: ${presetName}`);
+            }
+
+            const config = await response.json();
+            this.applyInferenceConfig(config);
+        } catch (error) {
+            this.showError(`Failed to load preset: ${error.message}`);
+        }
+    }
+
+    async loadMultiNodePreset(presetName) {
+        try {
+            const response = await fetch(`${this.apiBase}/preset/${presetName}`);
+            if (!response.ok) {
+                throw new Error(`Failed to load preset: ${presetName}`);
+            }
+
+            const config = await response.json();
+            this.applyMultiNodeConfig(config);
         } catch (error) {
             this.showError(`Failed to load preset: ${error.message}`);
         }
@@ -1134,6 +1178,42 @@ class GPUMemCalculator {
         document.getElementById('multinode-comm-time').textContent = '-- ms/step';
         document.getElementById('multinode-latency').textContent = '-- ms';
         document.getElementById('multinode-suggestions').innerHTML = '<p>Run calculation to see optimization suggestions.</p>';
+    }
+
+    applyInferenceConfig(config) {
+        // Apply model configuration to inference form
+        if (config.model) {
+            if (config.model.name) {
+                document.getElementById('inference-model-name').value = config.model.name;
+            }
+            if (config.model.num_parameters) {
+                document.getElementById('inference-num-params').value = config.model.num_parameters;
+            }
+            if (config.model.num_layers) {
+                document.getElementById('inference-num-layers').value = config.model.num_layers;
+            }
+            if (config.model.hidden_size) {
+                document.getElementById('inference-hidden-size').value = config.model.hidden_size;
+            }
+            if (config.model.num_attention_heads) {
+                document.getElementById('inference-num-heads').value = config.model.num_attention_heads;
+            }
+            if (config.model.vocab_size) {
+                document.getElementById('inference-vocab-size').value = config.model.vocab_size;
+            }
+            if (config.model.max_seq_len) {
+                document.getElementById('inference-seq-len').value = config.model.max_seq_len;
+            }
+        }
+    }
+
+    applyMultiNodeConfig(config) {
+        // Apply model configuration to multinode form
+        if (config.model) {
+            if (config.model.num_parameters) {
+                document.getElementById('multinode-num-params').value = config.model.num_parameters;
+            }
+        }
     }
 
     /**
