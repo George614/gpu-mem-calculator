@@ -4,14 +4,44 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Hugging Face Spaces](https://img.shields.io/badge/🤗-Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/george614/gpu-memory-calculator)
 
 A versatile Python application for calculating GPU memory requirements for training Large Language Models with support for multiple training engines including PyTorch DDP, DeepSpeed ZeRO, Megatron-LM, and FSDP.
+
+## 🎯 Try it Online - No Installation Required!
+
+**[🚀 Launch GPU Memory Calculator on Hugging Face Spaces](https://huggingface.co/spaces/george614/gpu-memory-calculator)**
+
+Calculate GPU memory instantly in your browser. Supports all training engines (DeepSpeed, Megatron, FSDP) and inference engines (vLLM, TGI, SGLang).
+
+<details>
+<summary>📦 Want to install locally? CLI & Python API available</summary>
+
+```bash
+pip install gpu-mem-calculator
+gpu-mem-calc calculate --preset llama2-7b
+```
+
+See [Installation](#-installation) below.
+</details>
+
+---
 
 📖 **[Getting Started Guide](docs/GETTING_STARTED.md)** | 💬 **[FAQ](docs/FAQ.md)** | 🤝 **[Contributing](CONTRIBUTING.md)**
 
 <p align="center">
   <img src="docs/screenshot.png" alt="GPU Memory Calculator Screenshot" width="800">
 </p>
+
+---
+
+## 🌟 Featured On
+
+**[🤗 Hugging Face Spaces](https://huggingface.co/spaces/george614/gpu-memory-calculator)** - Try the interactive web demo with no installation!
+
+**Star ⭐ this repo** to support development and get updates!
+
+---
 
 ## 🚀 Why Use This Tool?
 
