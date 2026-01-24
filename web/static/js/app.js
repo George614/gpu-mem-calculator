@@ -1048,7 +1048,9 @@ class GPUMemCalculator {
         document.getElementById('inference-result-kv-cache').textContent = `${result.kv_cache_gb.toFixed(2)} GB`;
         document.getElementById('inference-result-activations').textContent = `${result.activations_gb.toFixed(2)} GB`;
         document.getElementById('inference-max-batch').textContent = result.max_supported_batch_size || 'N/A';
-        document.getElementById('inference-throughput').textContent = `${result.estimated_throughput_tokens_per_sec.toFixed(0)} tokens/sec`;
+        document.getElementById('inference-throughput').textContent = result.estimated_throughput_tokens_per_sec
+            ? `${result.estimated_throughput_tokens_per_sec.toFixed(0)} tokens/sec`
+            : 'N/A';
         document.getElementById('inference-fits').textContent = result.fits_on_gpu ? '✓ Yes' : '✗ No';
         document.getElementById('inference-fits').style.color = result.fits_on_gpu ? 'var(--success-color)' : 'var(--danger-color)';
         document.getElementById('inference-utilization').textContent = `${(result.utilization * 100).toFixed(1)}%`;
