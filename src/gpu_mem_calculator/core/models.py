@@ -89,6 +89,23 @@ class ModelConfig(BaseModel):
     )
 
     @model_validator(mode="after")
+    def validate_moe_config(self) -> ModelConfig:
+        """Validate MoE configuration and ensure top_k <= num_experts."""
+        if self.moe_enabled:
+            if self.top_k > self.num_experts:
+                raise ValueError(
+                    f"top_k ({self.top_k}) cannot exceed num_experts ({self.num_experts}). "
+                    f"top_k specifies the number of experts to activate per token, "
+                    f"which must be at most the total number of experts available."
+                )
+            if self.num_experts < 2:
+                raise ValueError(
+                    f"num_experts must be >= 2 for MoE models, got {self.num_experts}. "
+                    f"Use moe_enabled=False for dense models."
+                )
+        return self
+
+    @model_validator(mode="after")
     def calculate_largest_layer(self) -> ModelConfig:
         """Calculate largest layer params if not provided."""
         if self.largest_layer_params is not None:

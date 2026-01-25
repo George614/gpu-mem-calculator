@@ -96,7 +96,7 @@ class FSDPEngine(BaseEngine):
         - 4 bytes: Variance (FP32)
         """
         num_params = self.model_config.num_parameters
-        num_gpus = self.total_num_gpus
+        num_gpus = max(1, self.total_num_gpus)  # Defensive guard against division by zero
 
         # Model parameters (full model on each GPU)
         model_params_gb = gb_from_bytes(num_params * 2)  # FP16/BF16
@@ -158,7 +158,7 @@ class FSDPEngine(BaseEngine):
         because FSDP doesn't keep an additional FP32 gradient copy in the optimizer states.
         """
         num_params = self.model_config.num_parameters
-        num_gpus = self.total_num_gpus
+        num_gpus = max(1, self.total_num_gpus)  # Defensive guard against division by zero
 
         # Largest layer memory (fp16 params + fp16 grads gathered during compute)
         largest_layer_memory_gb = gb_from_bytes(largest_layer_params * 4)

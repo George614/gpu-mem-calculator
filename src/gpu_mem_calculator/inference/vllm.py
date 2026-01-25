@@ -1,5 +1,7 @@
 """vLLM inference engine memory calculation."""
 
+import math
+
 from gpu_mem_calculator.core.models import (
     InferenceMemoryBreakdown,
     InferenceMemoryResult,
@@ -71,11 +73,12 @@ class VLLMEngine(BaseInferenceEngine):
         seq_len = self._get_effective_seq_len()
         total_tokens = batch_size * seq_len
 
-        # Calculate number of blocks needed
-        num_blocks = (total_tokens + block_size - 1) // block_size
+        # Calculate number of blocks needed (ceiling division)
+        base_blocks = (total_tokens + block_size - 1) // block_size
 
         # Add 20% buffer for dynamic allocation during generation
-        num_blocks = int(num_blocks * 1.2)
+        # Use math.ceil to ensure we don't lose precision
+        num_blocks = math.ceil(base_blocks * 1.2)
 
         # KV cache memory with block allocation
         kv_bytes_per_token = self._get_kv_cache_bytes_per_token()
@@ -140,7 +143,9 @@ class VLLMEngine(BaseInferenceEngine):
         seq_len = self._get_effective_seq_len()
         batch_size = self.inference_config.batch_size
 
-        num_blocks = (batch_size * seq_len + block_size - 1) // block_size * 1.2
+        # Calculate number of blocks with 20% buffer, using ceil for proper rounding
+        base_blocks = (batch_size * seq_len + block_size - 1) // block_size
+        num_blocks = math.ceil(base_blocks * 1.2)
         block_table_bytes = num_blocks * 8
         block_table_gb = block_table_bytes / (1024**3)
 

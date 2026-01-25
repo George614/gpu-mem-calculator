@@ -72,9 +72,16 @@ class BaseInferenceEngine(ABC):
             # Try to estimate max batch size
             # This is a simplified heuristic
             current_batch = self.inference_config.batch_size
-            overhead_per_token = total_memory_per_gpu / current_batch
-            potential_max_batch = int(available_memory / overhead_per_token)
-            max_batch_size = max(1, potential_max_batch)
+            # Defensive guard: ensure batch size is at least 1 to avoid division by zero
+            if current_batch <= 0:
+                max_batch_size = 1
+            else:
+                overhead_per_token = total_memory_per_gpu / current_batch
+                if overhead_per_token > 0:
+                    potential_max_batch = int(available_memory / overhead_per_token)
+                    max_batch_size = max(1, potential_max_batch)
+                else:
+                    max_batch_size = 1
 
         return fits_on_gpu, utilization_percent, max_batch_size
 
@@ -99,12 +106,18 @@ class BaseInferenceEngine(ABC):
         )
 
         # Estimate throughput (simplified heuristic)
+        # NOTE: This is a very rough estimate. Actual throughput varies significantly based on:
+        # - GPU hardware (A100, H100, etc.)
+        # - Model architecture and size
+        # - Sequence length and batch size
+        # - Inference optimizations (Flash Attention, kernel fusion, etc.)
+        # Use this value with caution - it's primarily for relative comparisons.
         estimated_throughput = None
         if fits_on_gpu:
-            # Rough estimate: assumes each token takes ~50ms to process
-            # This varies wildly based on hardware and model
-            tokens_per_batch = self.inference_config.batch_size * self._get_effective_seq_len()
-            estimated_throughput = tokens_per_batch / 0.05  # 50ms per batch
+            batch_size = max(1, self.inference_config.batch_size)  # Defensive guard
+            tokens_per_batch = batch_size * self._get_effective_seq_len()
+            # Rough estimate: ~50ms per batch (highly variable)
+            estimated_throughput = tokens_per_batch / 0.05  # tokens per second
 
         return InferenceMemoryResult(
             total_memory_per_gpu_gb=total_memory_per_gpu,

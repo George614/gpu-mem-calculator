@@ -170,20 +170,26 @@ def calculate_activation_memory(
     """
     from gpu_mem_calculator.utils.precision import gb_from_bytes
 
+    # Defensive guard: ensure tensor_parallel_size is at least 1
+    tp_size = max(1, tensor_parallel_size)
+
     # Approximate activation memory per token per layer
     # Based on EleutherAI formula: sbhL(10 + 24/t)
     # For t=1: ~10-24 bytes per token per layer depending on architecture
-    # We use 16 as a middle-ground estimate
+    # We use 16 as a middle-ground estimate (LLaMA: ~12, GPT-3: ~20)
     # This includes attention outputs, MLP activations, layer norms, etc.
-
-    bytes_per_token_per_layer = hidden_size * 16  # Heuristic estimate
+    # Reference: https://blog.eleuther.ai/transformer-math/#activations
+    activation_factor = 16  # Documented heuristic
+    bytes_per_token_per_layer = hidden_size * activation_factor
 
     # For MoE models, adjust activation memory based on active experts
     moe_multiplier = 1.0
     if moe_enabled and num_experts > 1:
+        # Defensive guard: ensure num_experts is at least 1
+        safe_num_experts = max(1, num_experts)
         # Only top_k experts are active per token
         # Base ratio of active experts
-        expert_ratio = top_k / num_experts
+        expert_ratio = top_k / safe_num_experts
 
         # Add router overhead (gating network activations)
         router_overhead = 0.1
@@ -204,8 +210,17 @@ def calculate_activation_memory(
         * num_layers
         * bytes_per_token_per_layer
         * moe_multiplier
-        / tensor_parallel_size
+        / tp_size
     )
+
+    # Sanity check: activation memory should not exceed 1 PB (likely invalid config)
+    max_reasonable_bytes = 1e15  # 1 PB
+    if total_bytes > max_reasonable_bytes:
+        raise ValueError(
+            f"Unreasonable activation memory calculated: {total_bytes / 1e12:.2f} TB. "
+            f"Check your configuration (batch_size={batch_size}, seq_len={seq_len}, "
+            f"num_layers={num_layers}, hidden_size={hidden_size})."
+        )
 
     # Adjust for activation checkpointing
     # Level 0: No checkpointing (100% memory)
@@ -214,7 +229,9 @@ def calculate_activation_memory(
     # Level 3: Checkpoint more (~40% memory)
     # Level 4: Full checkpointing (~20% memory)
     checkpoint_factors = [1.0, 0.8, 0.6, 0.4, 0.2]
-    checkpoint_factor = checkpoint_factors[min(activation_checkpointing, 4)]
+    # Defensive guard: ensure index is within bounds [0, 4]
+    checkpoint_index = max(0, min(activation_checkpointing, 4))
+    checkpoint_factor = checkpoint_factors[checkpoint_index]
 
     total_bytes *= checkpoint_factor
 

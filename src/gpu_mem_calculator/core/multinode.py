@@ -161,8 +161,13 @@ class MultiNodeCalculator:
         # Adjust for collective operation efficiency
         # In multi-node, cross-node traffic is the bottleneck
         if self.node_config.is_multi_node:
-            # Only cross-node traffic matters
-            allreduce_bytes = int(allreduce_bytes / self.node_config.num_nodes)
+            # Cross-node traffic estimation: divide by num_nodes to account for
+            # hierarchical AllReduce (intra-node aggregation via NVLink first,
+            # then inter-node communication via InfiniBand/Ethernet).
+            # This represents the portion of data that must traverse the
+            # slower inter-node interconnect.
+            num_nodes = max(1, self.node_config.num_nodes)  # Defensive guard
+            allreduce_bytes = int(allreduce_bytes / num_nodes)
 
         return allreduce_bytes / (1024**3)
 
@@ -190,9 +195,12 @@ class MultiNodeCalculator:
             # Standard allgather for tensor parallel
             allgather_bytes = int(model_size_bytes / self.parallelism_config.tensor_parallel_size)
 
-        # Adjust for multi-node
+        # Adjust for multi-node: similar to AllReduce, account for hierarchical
+        # communication where intra-node AllGather uses NVLink and only
+        # inter-node portion uses the slower interconnect
         if self.node_config.is_multi_node:
-            allgather_bytes = int(allgather_bytes / self.node_config.num_nodes)
+            num_nodes = max(1, self.node_config.num_nodes)  # Defensive guard
+            allgather_bytes = int(allgather_bytes / num_nodes)
 
         return allgather_bytes / (1024**3)
 
@@ -218,9 +226,12 @@ class MultiNodeCalculator:
             # Standard reducescatter
             reducescatter_bytes = int(model_size_bytes / self.parallelism_config.data_parallel_size)
 
-        # Adjust for multi-node
+        # Adjust for multi-node: similar to AllReduce, account for hierarchical
+        # communication where intra-node ReduceScatter uses NVLink and only
+        # inter-node portion uses the slower interconnect
         if self.node_config.is_multi_node:
-            reducescatter_bytes = int(reducescatter_bytes / self.node_config.num_nodes)
+            num_nodes = max(1, self.node_config.num_nodes)  # Defensive guard
+            reducescatter_bytes = int(reducescatter_bytes / num_nodes)
 
         return reducescatter_bytes / (1024**3)
 
@@ -243,19 +254,31 @@ class MultiNodeCalculator:
         hidden_size = self.model_config.hidden_size
         seq_len = self.model_config.max_seq_len
         batch_size = self.training_config.batch_size
-        num_layers = self.model_config.num_layers
 
         # Activation size per layer
         activation_bytes = batch_size * seq_len * hidden_size * 2  # FP16/BF16
 
-        # Number of microbatches determines communication frequency
-        # For simplicity, assume num_stages communications per step
-        pp_size = self.parallelism_config.pipeline_parallel_size
-        pipeline_comm_bytes = activation_bytes * (num_layers // pp_size)
+        # Pipeline parallel communication:
+        # - Forward pass sends activations between stages
+        # - Backward pass sends gradients between stages (same size as activations)
+        # - With microbatching, communication happens multiple times per step
+        pp_size = max(1, self.parallelism_config.pipeline_parallel_size)
+        num_stages = pp_size
 
-        # Adjust for multi-node
+        # Default microbatch count estimate (could be configurable)
+        # Typical values: 4-16 microbatches for efficient pipeline utilization
+        num_microbatches = 4
+
+        # Communication per step: activations × microbatches × stages × 2 (forward + backward)
+        pipeline_comm_bytes = activation_bytes * num_microbatches * num_stages * 2
+
+        # Adjust for multi-node: only cross-node pipeline stages contribute to
+        # inter-node communication. Estimate based on stage distribution.
         if self.node_config.is_multi_node:
-            pipeline_comm_bytes = int(pipeline_comm_bytes / self.node_config.num_nodes)
+            num_nodes = max(1, self.node_config.num_nodes)  # Defensive guard
+            # Assume stages are distributed across nodes, so ~1/num_nodes of
+            # pipeline boundaries are cross-node
+            pipeline_comm_bytes = int(pipeline_comm_bytes / num_nodes)
 
         return pipeline_comm_bytes / (1024**3)
 
@@ -271,12 +294,14 @@ class MultiNodeCalculator:
         if total_gb == 0:
             return 0.0
 
-        # Get bandwidth in GB/s
+        # Get bandwidth and convert to GB/s
+        # bandwidth_gbps is in gigabits per second (Gbps)
+        # Divide by 8 to convert to gigabytes per second (GB/s)
         bandwidth_gbps = self.node_config.get_interconnect_bandwidth_gbps()
-        bandwidth_gbps_per_sec = bandwidth_gbps / 8  # Convert to GB/s
+        bandwidth_gb_per_sec = bandwidth_gbps / 8.0  # Convert Gbps to GB/s
 
         # Basic time = size / bandwidth
-        time_seconds = total_gb / bandwidth_gbps_per_sec
+        time_seconds = total_gb / bandwidth_gb_per_sec
 
         # Add latency overhead for collective operations
         # Typical latency: 10-50 microseconds per hop

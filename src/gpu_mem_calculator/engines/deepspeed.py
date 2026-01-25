@@ -100,7 +100,7 @@ class DeepSpeedEngine(BaseEngine):
         - 4 bytes: Variance (FP32)
         """
         num_params = self.model_config.num_parameters
-        num_gpus = self.total_num_gpus
+        num_gpus = max(1, self.total_num_gpus)  # Defensive guard against division by zero
 
         # Model parameters (fp16/bf16 on GPU)
         model_params_gb = gb_from_bytes(num_params * 2)  # FP16/BF16 = 2 bytes
@@ -169,7 +169,7 @@ class DeepSpeedEngine(BaseEngine):
         Note: Unlike ZeRO-1, ZeRO-2 shards gradients across GPUs
         """
         num_params = self.model_config.num_parameters
-        num_gpus = self.total_num_gpus
+        num_gpus = max(1, self.total_num_gpus)  # Defensive guard against division by zero
 
         # Model parameters (fp16/bf16 on GPU) - NOT sharded in ZeRO-2
         model_params_gb = gb_from_bytes(num_params * 2)  # FP16/BF16 = 2 bytes
@@ -250,7 +250,7 @@ class DeepSpeedEngine(BaseEngine):
         - 4 bytes: Gradient (FP32 copy for optimizer update)
         """
         num_params = self.model_config.num_parameters
-        num_gpus = self.total_num_gpus
+        num_gpus = max(1, self.total_num_gpus)  # Defensive guard against division by zero
 
         # Largest layer memory (fp16 params + fp16 grads gathered on one GPU)
         largest_layer_memory_gb = gb_from_bytes(largest_layer_params * 4)
@@ -304,9 +304,11 @@ class DeepSpeedEngine(BaseEngine):
         )
         overhead_gb = calculate_overhead(base_memory)
 
-        # For ZeRO-3, we combine params/gradients/optimizer into model_params in breakdown
+        # For ZeRO-3, model_params is the largest layer (gathered during compute)
+        # params_per_gpu is the sharded parameter storage, counted separately in gradients/optimizer
+        # Don't double-count by adding params_per_gpu_gb to model_params_gb
         breakdown = MemoryBreakdown(
-            model_params_gb=model_params_gb + params_per_gpu_gb,
+            model_params_gb=model_params_gb,  # Just largest layer for ZeRO-3
             gradients_gb=gradients_per_gpu_gb,
             optimizer_states_gb=optimizer_gb,
             activations_gb=activations_gb,

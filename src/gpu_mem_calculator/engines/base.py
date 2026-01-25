@@ -195,8 +195,17 @@ class BaseEngine(ABC):
         # For models with shared experts (like GLM), adjust accordingly
         if self.model_config.shared_expert_intermediate_size:
             # Shared expert is always active, so add its contribution
-            # This is a simplified approximation
-            activation_ratio = activation_ratio + (1.0 / num_experts)
+            # Calculate the size ratio between shared and routed experts
+            shared_size = self.model_config.shared_expert_intermediate_size
+            # Get routed expert size, default to 4x hidden_size if not specified
+            routed_size = self.model_config.expert_intermediate_size or (
+                self.model_config.hidden_size * 4
+            )
+            # Shared expert contribution = shared_size / (routed_size * num_experts)
+            # This represents the fraction of total expert capacity that shared expert uses
+            if routed_size > 0 and num_experts > 0:
+                size_ratio = shared_size / (routed_size * num_experts)
+                activation_ratio = activation_ratio + size_ratio
 
         return min(1.0, activation_ratio + router_overhead)
 

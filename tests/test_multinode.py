@@ -302,12 +302,14 @@ class TestNetworkOverhead:
 
         overhead = calculator.calculate_network_overhead()
 
-        # Pipeline: activations between stages
+        # Pipeline: activations between stages with microbatching
         # activation_size = batch * seq * hidden * 2 bytes
-        # communications = num_layers / pp_size
+        # Formula: activation_bytes * num_microbatches * num_stages * 2 (forward + backward)
         # Cross-node: divide by num_nodes
         activation_bytes = 4 * 2048 * 4096 * 2
-        pipeline_bytes = activation_bytes * (32 // 4)
+        num_microbatches = 4  # Default value in multinode.py
+        num_stages = 4  # pp_size
+        pipeline_bytes = activation_bytes * num_microbatches * num_stages * 2
         expected_gb = (pipeline_bytes / 4) / (1024**3)
 
         assert overhead.point_to_point_gb == pytest.approx(expected_gb, rel=0.1)
