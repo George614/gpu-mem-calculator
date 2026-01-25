@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from starlette.requests import Request
 
 from gpu_mem_calculator.config.presets import load_presets
@@ -29,6 +29,14 @@ from gpu_mem_calculator.core.models import (
 )
 from gpu_mem_calculator.core.multinode import MultiNodeCalculator
 from gpu_mem_calculator.exporters.manager import ExportFormat, ExportManager
+from gpu_mem_calculator.huggingface import (
+    HuggingFaceClient,
+    HuggingFaceConfigMapper,
+    HuggingFaceError,
+    InvalidConfigError,
+    ModelNotFoundError,
+    PrivateModelAccessError,
+)
 from gpu_mem_calculator.inference.calculator import InferenceMemoryCalculator
 
 # Configure logging
@@ -154,6 +162,15 @@ class PresetInfo(BaseModel):
     config: dict[str, Any]
 
 
+class HuggingFaceRequest(BaseModel):
+    """Request for fetching HuggingFace model metadata."""
+
+    model_config = ConfigDict(protected_namespaces=())
+
+    model_id: str = Field(description="HuggingFace model ID (e.g., meta-llama/Llama-2-7b-hf)")
+    token: str | None = Field(default=None, description="HF token for private models")
+
+
 # Simple in-memory cache for calculation results
 # In production, use Redis or similar
 _calculation_cache: dict[str, tuple[MemoryResult, float]] = {}  # key -> (result, timestamp)
@@ -276,6 +293,87 @@ async def get_preset(preset_name: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Preset '{preset_name}' not found")
 
     return PRESETS[preset_name].config
+
+
+@app.post("/api/hf/fetch")
+async def fetch_huggingface_model(request: HuggingFaceRequest) -> dict[str, Any]:
+    """Fetch model metadata from HuggingFace Hub.
+
+    Args:
+        request: Request with model_id and optional token
+
+    Returns:
+        Model config with fields filled from HF, plus list of missing fields
+
+    Raises:
+        HTTPException: If model not found, access denied, or invalid config
+    """
+    try:
+        # Initialize HF client
+        client = HuggingFaceClient(token=request.token)
+
+        # Fetch metadata
+        metadata = await client.fetch_model_metadata(request.model_id)
+
+        # Map to ModelConfig
+        mapper = HuggingFaceConfigMapper()
+        result = mapper.map_to_model_config(metadata["config"], metadata.get("model_info"))
+
+        return {
+            "model_id": request.model_id,
+            "config": result["config"],
+            "missing_fields": result["missing_fields"],
+            "found_fields": result["found_fields"],
+            "warnings": [],
+        }
+
+    except PrivateModelAccessError as e:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "Authentication required",
+                "message": str(e),
+                "type": "auth_error",
+            },
+        ) from e
+    except ModelNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "Model not found",
+                "message": str(e),
+                "type": "not_found",
+            },
+        ) from e
+    except InvalidConfigError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Invalid model configuration",
+                "message": str(e),
+                "type": "invalid_config",
+            },
+        ) from e
+    except HuggingFaceError as e:
+        logger.error(f"HuggingFace error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "HuggingFace API error",
+                "message": str(e),
+                "type": "api_error",
+            },
+        ) from e
+    except Exception as e:
+        logger.error(f"Unexpected error fetching HF model: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Internal server error",
+                "message": "An unexpected error occurred",
+                "type": "server_error",
+            },
+        ) from e
 
 
 @app.post("/api/calculate")

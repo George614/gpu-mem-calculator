@@ -32,23 +32,51 @@
                     <h3>Model Settings</h3>
                     <div class="form-group">
                         <label for="preset-select">Preset Model:</label>
-                        <select id="preset-select">
-                            <option value="custom">Custom</option>
-                            <optgroup label="Dense Models">
-                                <option value="llama2-7b">LLaMA 2 7B</option>
-                                <option value="llama2-13b">LLaMA 2 13B</option>
-                                <option value="llama2-70b">LLaMA 2 70B</option>
-                                <option value="gpt3-175b">GPT-3 175B</option>
-                            </optgroup>
-                            <optgroup label="MoE (Mixture of Experts) Models">
-                                <option value="glm-4.7-355b">GLM-4.7 355B (MoE) ⭐ Latest</option>
-                                <option value="glm-4.5-air-106b">GLM-4.5 Air 106B (MoE) ⭐ Air</option>
-                                <option value="glm-4-9b">GLM-4 9B (MoE)</option>
-                                <option value="mixtral-8x7b">Mixtral 8x7B (MoE)</option>
-                                <option value="qwen1.5-moe-a2.7b">Qwen1.5-MoE-A2.7B</option>
-                                <option value="deepseek-moe-16b">DeepSeek-MoE 16B</option>
-                            </optgroup>
-                        </select>
+                        <div class="preset-row">
+                            <select id="preset-select">
+                                <option value="custom">Custom</option>
+                                <optgroup label="Dense Models">
+                                    <option value="llama2-7b">LLaMA 2 7B</option>
+                                    <option value="llama2-13b">LLaMA 2 13B</option>
+                                    <option value="llama2-70b">LLaMA 2 70B</option>
+                                    <option value="gpt3-175b">GPT-3 175B</option>
+                                </optgroup>
+                                <optgroup label="MoE (Mixture of Experts) Models">
+                                    <option value="glm-4.7-355b">GLM-4.7 355B (MoE) ⭐ Latest</option>
+                                    <option value="glm-4.5-air-106b">GLM-4.5 Air 106B (MoE) ⭐ Air</option>
+                                    <option value="glm-4-9b">GLM-4 9B (MoE)</option>
+                                    <option value="mixtral-8x7b">Mixtral 8x7B (MoE)</option>
+                                    <option value="qwen1.5-moe-a2.7b">Qwen1.5-MoE-A2.7B</option>
+                                    <option value="deepseek-moe-16b">DeepSeek-MoE 16B</option>
+                                </optgroup>
+                            </select>
+                            <button id="fetch-hf-btn" class="btn-tertiary" title="Fetch from HuggingFace Hub" type="button">
+                                <span>🤗 Fetch from HF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- HF Fetch Panel (hidden by default) -->
+                    <div id="hf-fetch-panel" style="display: none;" class="hf-fetch-panel">
+                        <div class="form-group">
+                            <label for="hf-model-id">HuggingFace Model ID:</label>
+                            <input type="text" id="hf-model-id" placeholder="e.g., meta-llama/Llama-2-7b-hf" aria-describedby="hf-model-help">
+                            <span id="hf-model-help" class="help-text">Enter the HuggingFace model repository ID (e.g., meta-llama/Llama-2-7b-hf)</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="hf-token">HF Token (optional, for private models):</label>
+                            <input type="password" id="hf-token" placeholder="hf_xxxxxxxxxxxx" aria-describedby="hf-token-help">
+                            <span id="hf-token-help" class="help-text">Leave empty for public models, provide token for gated/private models</span>
+                        </div>
+                        <div class="button-group">
+                            <button id="hf-fetch-submit" class="btn-primary" type="button">Fetch Model</button>
+                            <button id="hf-fetch-cancel" class="btn-secondary" type="button">Cancel</button>
+                        </div>
+                        <div id="hf-loading" style="display: none;" class="loading-message">
+                            <p>Fetching model from HuggingFace Hub...</p>
+                        </div>
+                        <div id="hf-error" style="display: none;" class="error-message" aria-live="poloice"></div>
+                        <div id="hf-success" style="display: none;" class="success-message" aria-live="police"></div>
                     </div>
 
                     <div class="form-grid">

@@ -32,6 +32,19 @@ class GPUMemCalculator {
             }
         });
 
+        // Hugging Face fetch functionality
+        document.getElementById('fetch-hf-btn').addEventListener('click', () => {
+            this.showHFPFetchPanel();
+        });
+
+        document.getElementById('hf-fetch-submit').addEventListener('click', () => {
+            this.fetchFromHuggingFace();
+        });
+
+        document.getElementById('hf-fetch-cancel').addEventListener('click', () => {
+            this.hideHFFetchPanel();
+        });
+
         // Batch size slider sync
         const batchSizeInput = document.getElementById('batch-size');
         const batchSizeSlider = document.getElementById('batch-size-slider');
@@ -473,6 +486,171 @@ class GPUMemCalculator {
         } catch (error) {
             this.showError(`Failed to load preset: ${error.message}`);
         }
+    }
+
+    showHFPFetchPanel() {
+        const panel = document.getElementById('hf-fetch-panel');
+        panel.style.display = 'block';
+
+        // Auto-focus model ID input
+        document.getElementById('hf-model-id').focus();
+
+        // Clear previous messages
+        document.getElementById('hf-error').style.display = 'none';
+        document.getElementById('hf-success').style.display = 'none';
+    }
+
+    hideHFFetchPanel() {
+        const panel = document.getElementById('hf-fetch-panel');
+        panel.style.display = 'none';
+
+        // Clear inputs
+        document.getElementById('hf-model-id').value = '';
+        document.getElementById('hf-token').value = '';
+
+        // Clear messages
+        document.getElementById('hf-loading').style.display = 'none';
+        document.getElementById('hf-error').style.display = 'none';
+        document.getElementById('hf-success').style.display = 'none';
+    }
+
+    async fetchFromHuggingFace() {
+        const modelId = document.getElementById('hf-model-id').value.trim();
+        const token = document.getElementById('hf-token').value.trim();
+
+        if (!modelId) {
+            document.getElementById('hf-error').textContent = 'Please enter a model ID';
+            document.getElementById('hf-error').style.display = 'block';
+            return;
+        }
+
+        const loadingEl = document.getElementById('hf-loading');
+        const errorEl = document.getElementById('hf-error');
+        const successEl = document.getElementById('hf-success');
+        const submitBtn = document.getElementById('hf-fetch-submit');
+
+        // Show loading state
+        loadingEl.style.display = 'block';
+        errorEl.style.display = 'none';
+        successEl.style.display = 'none';
+        submitBtn.disabled = true;
+
+        try {
+            const response = await fetch(`${this.apiBase}/hf/fetch`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model_id: modelId,
+                    token: token || null,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail?.message || result.detail || 'Failed to fetch model');
+            }
+
+            // Apply fetched config
+            this.applyHuggingFaceConfig(result.config);
+
+            // Show success message
+            let successMsg = `Successfully fetched ${modelId}`;
+            if (result.missing_fields.length > 0) {
+                const missingList = result.missing_fields.join(', ');
+                successMsg += `. Please provide manually: ${missingList}`;
+                // Highlight missing fields
+                result.missing_fields.forEach(field => {
+                    const input = document.getElementById(this.getFieldIdFromConfigField(field));
+                    if (input) {
+                        input.style.borderColor = '#f59e0b';
+                        input.style.borderWidth = '2px';
+                    }
+                });
+            } else {
+                successMsg += '. All fields populated!';
+            }
+            successEl.textContent = successMsg;
+            successEl.style.display = 'block';
+
+            // Hide panel after 3 seconds
+            setTimeout(() => {
+                this.hideHFFetchPanel();
+            }, 3000);
+
+        } catch (error) {
+            errorEl.textContent = `Error: ${error.message}`;
+            errorEl.style.display = 'block';
+        } finally {
+            loadingEl.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    }
+
+    applyHuggingFaceConfig(config) {
+        // Set flag to prevent auto-calculation
+        this.isApplyingConfig = true;
+
+        // Apply model fields
+        if (config.name) {
+            document.getElementById('model-name').value = config.name;
+        }
+        if (config.num_parameters) {
+            document.getElementById('num-params').value = config.num_parameters;
+        }
+        if (config.num_layers) {
+            document.getElementById('num-layers').value = config.num_layers;
+        }
+        if (config.hidden_size) {
+            document.getElementById('hidden-size').value = config.hidden_size;
+        }
+        if (config.num_attention_heads) {
+            document.getElementById('num-heads').value = config.num_attention_heads;
+        }
+        if (config.vocab_size) {
+            document.getElementById('vocab-size').value = config.vocab_size;
+        }
+        if (config.max_seq_len) {
+            document.getElementById('seq-len').value = config.max_seq_len;
+        }
+
+        // Apply MoE configuration
+        if (config.moe_enabled) {
+            document.getElementById('moe-enabled').checked = true;
+            this.toggleMoEFields(true);
+
+            if (config.num_experts) {
+                document.getElementById('num-experts').value = config.num_experts;
+            }
+            if (config.top_k) {
+                document.getElementById('top-k').value = config.top_k;
+            }
+            this.updateMoEDisplay();
+        } else {
+            document.getElementById('moe-enabled').checked = false;
+            this.toggleMoEFields(false);
+        }
+
+        // Re-enable auto-calculation and trigger calculation
+        setTimeout(() => {
+            this.isApplyingConfig = false;
+            this.calculateMemory();
+        }, 100);
+    }
+
+    getFieldIdFromConfigField(fieldName) {
+        // Map config field names to input element IDs
+        const fieldMap = {
+            'num_parameters': 'num-params',
+            'num_layers': 'num-layers',
+            'hidden_size': 'hidden-size',
+            'num_attention_heads': 'num-heads',
+            'vocab_size': 'vocab-size',
+            'max_seq_len': 'seq-len',
+        };
+        return fieldMap[fieldName] || null;
     }
 
     applyConfig(config) {

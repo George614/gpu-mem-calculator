@@ -530,3 +530,79 @@ header h1 {
 .formula-references a:hover {
     text-decoration: underline;
 }
+
+/* Hugging Face Integration */
+.preset-row {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+}
+
+.preset-row select {
+	flex: 1;
+}
+
+.btn-tertiary {
+	background-color: #ffd700;
+	color: #1e293b;
+	border: none;
+	padding: 10px 16px;
+	border-radius: 6px;
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s;
+	white-space: nowrap;
+}
+
+.btn-tertiary:hover {
+	background-color: #f0c000;
+}
+
+.btn-tertiary:active {
+	transform: scale(0.98);
+}
+
+.hf-fetch-panel {
+	background: #f0f9ff;
+	border: 1px solid #2563eb;
+	border-radius: 8px;
+	padding: 20px;
+	margin-top: 15px;
+}
+
+.hf-fetch-panel .form-group {
+	margin-bottom: 15px;
+}
+
+.hf-fetch-panel .help-text {
+	display: block;
+	font-size: 0.85rem;
+	color: var(--text-secondary);
+	margin-top: 5px;
+}
+
+.loading-message {
+	color: var(--primary-color);
+	font-style: italic;
+	padding: 10px;
+	text-align: center;
+}
+
+.error-message {
+	background-color: #fee;
+	color: #c00;
+	padding: 12px;
+	border-radius: 6px;
+	border: 1px solid #fcc;
+	margin-top: 10px;
+}
+
+.success-message {
+	background-color: #efe;
+	color: #0a0;
+	padding: 12px;
+	border-radius: 6px;
+	border: 1px solid #cfc;
+	margin-top: 10px;
+}
