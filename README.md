@@ -98,6 +98,7 @@ Whether you're training a 7B parameter model on a single GPU or a 175B model acr
 - **Easy Config**: JSON-based configuration files with human-readable parameter formats (e.g., "7B", "7000M")
 
 ### Web UI Enhancements
+- **🆕 HuggingFace Hub Integration**: Fetch model metadata directly from HuggingFace Model Hub by entering a model ID (e.g., `meta-llama/Llama-2-7b-hf`)
 - **Formula Explanations**: See exactly how memory is calculated with your values plugged in
 - **Real-time Validation**: Client-side validation prevents invalid configurations
 - **Smart Auto-calculation**: Optimized debouncing (1s) with minimum interval protection
@@ -574,6 +575,7 @@ gpu-mem-calc calculate --config configs/pytorch_ddp_example.json
 - `POST /api/export/deepspeed` - Export DeepSpeed config file
 - `POST /api/optimize/batch-size` - Find maximum batch size
 - `GET /api/preset/{preset_name}` - Load model preset
+- `POST /api/hf/fetch` - 🆕 Fetch model metadata from HuggingFace Hub
 
 ## Development
 

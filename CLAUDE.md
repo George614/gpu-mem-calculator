@@ -169,11 +169,13 @@ All engines inherit from `BaseEngine` which provides:
 - `/api/export/*` endpoints for framework config export
 - `/api/presets` for loading model presets
 - `/api/optimize/batch-size` for finding maximum batch size
+- `/api/hf/fetch` for fetching model metadata from HuggingFace Hub
 
 **templates/index.html** - Single-page app with:
 - Three tabs: Training, Inference, Multi-Node
 - Real-time form validation and auto-calculation (1s debounce)
 - Engine-specific settings sections (TGI, vLLM, TensorRT-LLM, SGLang)
+- HuggingFace Hub integration panel (fetch model metadata by model ID)
 - Visual memory breakdown with color-coded bar charts
 - Accessibility features (ARIA labels, keyboard navigation)
 
@@ -181,7 +183,34 @@ All engines inherit from `BaseEngine` which provides:
 - `GPUMemoryCalculatorApp` class manages UI state
 - `calculateTrainingMemory()`, `calculateInferenceMemory()`, `calculateMultiNode()`
 - `updateInferenceEngineFields()`: Shows/hides engine-specific settings based on selection
+- `showHFPFetchPanel()`, `fetchFromHuggingFace()`, `applyHuggingFaceConfig()`: HF Hub integration
 - Form reset, validation, and result display functions
+
+**static/css/styles.css** - Styling:
+- Responsive layout with flexbox and grid
+- HuggingFace integration panel styles (`.hf-fetch-panel`, `.btn-tertiary`)
+- Colorblind-accessible chart patterns
+
+### HuggingFace Hub Integration (`src/gpu_mem_calculator/huggingface/`)
+
+**exceptions.py** - Custom exception types:
+- `HuggingFaceError`: Base exception for HF-related errors
+- `ModelNotFoundError`: Model not found on HF Hub
+- `PrivateModelAccessError`: Authentication required for private model
+- `InvalidConfigError`: Model config is invalid or missing required fields
+
+**client.py** - HuggingFace Hub API client:
+- `HuggingFaceClient`: Async HTTP client (httpx-based)
+- `get_model_info()`: Fetch model metadata from HF API
+- `get_model_config()`: Fetch config.json from repository
+- `fetch_model_metadata()`: Combined metadata fetching
+- Follows HTTP redirects, supports optional token authentication
+
+**mapper.py** - HF config → ModelConfig mapping:
+- `HuggingFaceConfigMapper.map_to_model_config()`: Main mapping method
+- Handles alternative field names (n_layer→num_layers, n_head→num_attention_heads, etc.)
+- MoE model detection (num_experts, top_k extraction)
+- Parameter estimation if not provided (estimates from architecture)
 
 ### Utilities (`src/gpu_mem_calculator/utils/`)
 
