@@ -45,6 +45,7 @@ dependencies = [
     "click>=8.1.0",
     "pydantic-settings>=2.0.0",
     "rich>=13.0.0",
+    "httpx>=0.15.0",
 ]
 
 [project.optional-dependencies]
