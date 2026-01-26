@@ -205,12 +205,7 @@ def calculate_activation_memory(
 
     # Total activation memory
     total_bytes = (
-        batch_size
-        * seq_len
-        * num_layers
-        * bytes_per_token_per_layer
-        * moe_multiplier
-        / tp_size
+        batch_size * seq_len * num_layers * bytes_per_token_per_layer * moe_multiplier / tp_size
     )
 
     # Sanity check: activation memory should not exceed 1 PB (likely invalid config)
