@@ -1,7 +1,6 @@
 """HuggingFace Hub client for fetching model metadata."""
 
 import logging
-import os
 from typing import Any, cast
 
 import httpx
@@ -23,14 +22,16 @@ class HuggingFaceClient:
         """Initialize HF Hub client.
 
         Args:
-            token: HF API token for private models (optional). If not provided,
-                   will check HF_TOKEN environment variable (available in HF Spaces).
+            token: HF API token for private models (optional). Users must provide
+                   their own token to access gated models. The app will NOT use
+                   the Space's HF_TOKEN environment variable for security reasons.
             timeout: HTTP timeout in seconds
         """
-        # Use provided token, or check HF_TOKEN env var (auto-set in HF Spaces)
-        self.token = token or os.environ.get("HF_TOKEN")
+        # Only use explicitly provided token, never auto-detect HF_TOKEN env var
+        # This prevents all public users from using the Space owner's token
+        self.token = token
         if self.token:
-            logger.info("Using HuggingFace authentication token")
+            logger.info("Using user-provided HuggingFace authentication token")
         self.timeout = timeout
         self.api_base = "https://huggingface.co/api"
         self.raw_base = "https://huggingface.co"
@@ -77,8 +78,10 @@ class HuggingFaceClient:
             if response.status_code == 401:
                 logger.warning(f"Authentication failed for {model_id}")
                 raise PrivateModelAccessError(
-                    f"Authentication required for model '{model_id}'. "
-                    "Please provide a HuggingFace token."
+                    f"Model '{model_id}' requires authentication. "
+                    "This is a gated model - please provide your own HuggingFace token "
+                    "in the 'HuggingFace Token' field above. Get your token at: "
+                    "https://huggingface.co/settings/tokens"
                 )
             elif response.status_code == 404:
                 raise ModelNotFoundError(f"Model '{model_id}' not found on HuggingFace Hub")
@@ -130,7 +133,11 @@ class HuggingFaceClient:
                     raise InvalidConfigError(f"config.json not found for model '{model_id}'")
             elif response.status_code == 401:
                 logger.warning(f"Authentication failed for config fetch of {model_id}")
-                raise PrivateModelAccessError(f"Authentication required for model '{model_id}'")
+                raise PrivateModelAccessError(
+                    f"Model '{model_id}' requires authentication. "
+                    "Please provide your own HuggingFace token in the form above. "
+                    "Get your token at: https://huggingface.co/settings/tokens"
+                )
             elif response.status_code != 200:
                 logger.error(f"Failed to fetch config for {model_id}: HTTP {response.status_code}")
                 raise HuggingFaceError(f"Failed to fetch model config: HTTP {response.status_code}")
